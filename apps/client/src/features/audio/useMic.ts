@@ -1,23 +1,20 @@
 import { useRef } from "react";
+import { createRecorder } from "./recorder";
 
 export const useMic = () => {
-  const mediaRecorder = useRef<MediaRecorder | null>(null);
+  const recorderRef = useRef<ReturnType<typeof createRecorder> | null>(null);
 
   const start = async (onData: (blob: Blob) => void) => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    const recorder = new MediaRecorder(stream);
+    const recorder = createRecorder(stream, onData);
 
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) onData(e.data);
-    };
-
-    recorder.start(1000);
-    mediaRecorder.current = recorder;
+    recorder.start();
+    recorderRef.current = recorder;
   };
 
   const stop = () => {
-    mediaRecorder.current?.stop();
+    recorderRef.current?.stop();
   };
 
   return { start, stop };
