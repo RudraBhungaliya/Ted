@@ -8,19 +8,23 @@ export const useStream = (url : string, enabled : boolean) => {
 
     useEffect(() => {
         if(!enabled) return;
-        let retryTimeout : NodeJS.Timeout;
+        let isActive = true;
+        let retryTimeout: ReturnType<typeof setTimeout> | undefined;
 
         const connect = () => {
             esRef.current = createSSE(url, (data) => {
-                if(data?.text) addChunk(data.text);
+                if(isActive && data?.text) addChunk(data.text);
             });
 
             esRef.current.onerror = () => {
+                if(!isActive) return;
                 esRef.current?.close();
 
                 // retry after delay
                 retryTimeout = setTimeout(() => {
-                    connect();
+                    if(isActive) {
+                        connect();
+                    }
                 }, 2000);
             };
         };
@@ -28,8 +32,11 @@ export const useStream = (url : string, enabled : boolean) => {
         connect();
 
         return () => {
+            isActive = false;
             esRef.current?.close();
-            clearTimeout(retryTimeout);
+            if(retryTimeout) {
+                clearTimeout(retryTimeout);
+            }
         };
     }, [url, enabled]);
 };

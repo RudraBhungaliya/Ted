@@ -1,5 +1,36 @@
 import axios from "axios";
 
 export const api = axios.create({
-    baseURL : "https:localhost:8000",
+    baseURL : "http://localhost:8000",
+    timeout : 10000, 
 });
+
+api.interceptors.response.use(
+    (res) => res,
+    (err) => {
+        console.error("API Error:", err?.response?.data || err.message);
+        return Promise.reject(err);
+    }
+)
+
+// Session
+export const startSession = async () => {
+    const { data } = await api.post("/session/start");
+    return data;
+}
+
+export const stopSession = async (sessionId : string) => {
+    await api.post(`/session/stop/${sessionId}`);
+};
+
+// audio
+export const sendAudioChunk = async (sessionId : string, chunk : Blob) => {
+    const formData = new FormData();
+    formData.append("audio", chunk);
+
+    await api.post(`/audio/${sessionId}`, formData, {
+        headers : {
+            "Content-Type" : "multipart/form-data",
+        },
+    });
+};

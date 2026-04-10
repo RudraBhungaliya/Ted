@@ -9,20 +9,24 @@ export const useInterview = () => {
     const stopInterview = useInterviewStore((s) => s.stop);
 
     const handleStart = async () => {
-        startInterview();
+        try {
+            await start(async (blob) => {
+                const formData = new FormData();
+                formData.append("audio", blob);
 
-        await start(async (blob) => {
-            const formData = new FormData();
-            formData.append("audio", blob);
+                try {
+                    await api.post("/interview/audio", formData);
+                }
+                catch(err) {
+                    console.error("Audio Upload Failed", err);
+                }
+            });
 
-            try{
-                await api.post("/interview/audio", formData);
-
-            }
-            catch(err){
-                console.error("Audio Upload Failed", err);
-            }
-        });
+            startInterview();
+        }
+        catch(err) {
+            console.error("Failed to start interview", err);
+        }
     };
 
     const handleStop = () => {

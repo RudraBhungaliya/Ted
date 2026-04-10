@@ -5,6 +5,7 @@ export const useMic = () => {
   const recorderRef = useRef<ReturnType<typeof createRecorder> | null>(null);
 
   const start = async (onData: (blob: Blob) => void) => {
+    recorderRef.current?.stop();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
     const recorder = createRecorder(stream, onData);
