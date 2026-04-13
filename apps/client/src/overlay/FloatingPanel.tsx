@@ -1,42 +1,48 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useInterviewStore } from "../features/interview/store";  
+import { useInterviewStore } from "../features/interview/store";
+import TranscriptView from "../components/ui/TranscriptView";
+import RecordingIndicator from "../components/ui/RecordingIndicator";
+import Button from "../components/common/Button";
 
 type Props = {
-    children : ReactNode;
-    onStart : () => void;
-    onStop : () => void;
-}
+  children: ReactNode;
+  onStart: () => void;
+  onStop: () => void;
+};
 
-export default function FloatingPanel({ children, onStart, onStop } : Props){
-    const isRecording = useInterviewStore((state) => state.isRecording);
+export default function FloatingPanel({ children, onStart, onStop }: Props) {
+  const isRecording = useInterviewStore((state) => state.isRecording);
+  const chunkCount = useInterviewStore((state) => state.streamData.length);
 
-    return(
-        <>
-        <div className="fixed bottom-6 right-6 w-[360px] h-[420px] bg-black/80 backdrop-blur-md border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-            
-            <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
-                <div className="text-sm font-medium">
-                    {isRecording ? "Recording..." : "Idle"}
-                </div>
+  return (
+    <>
+      <div className="fixed bottom-6 right-6 h-[420px] w-[360px] overflow-hidden rounded-2xl border border-white/10 bg-black/80 shadow-2xl backdrop-blur-md">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-white/10">
+          <div className="text-sm font-medium">
+            <RecordingIndicator active={isRecording} />
+          </div>
 
-                <button
-                    onClick={isRecording ? onStop : onStart}
-                    className="text-xs px-3 py-1 rounded-md bg-white/10 hover:bg-white/20 transition"
-                >
-                    {isRecording ? "Stop" : "Start"}
-                </button>
-            </div>
-
-            <div className="flex-1 p-3 overflow-hidden">
-                {children}
-            </div>
+          <Button onClick={isRecording ? onStop : onStart}>
+            {isRecording ? "Stop" : "Start"}
+          </Button>
         </div>
-        
-        </>
 
+        <div className="flex h-[calc(100%-48px)] flex-col p-3">
+          <div className="mb-2 text-xs text-zinc-400">
+            {chunkCount > 0
+              ? `${chunkCount} transcript chunk${chunkCount > 1 ? "s" : ""}`
+              : "No transcript yet"}
+          </div>
 
-    )
+          <div className="flex-1 overflow-y-auto rounded-lg border border-white/10 bg-black/30 p-3">
+            <TranscriptView />
+          </div>
 
+          {children}
+        </div>
+      </div>
+    </>
+  );
 }

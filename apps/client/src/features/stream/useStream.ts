@@ -28,10 +28,19 @@ export const useStream = (url: string, enabled: boolean) => {
 
         if (typeof data === "string") {
           addChunk(data);
-        } else if (data?.text) {
+        } else if (
+          typeof data === "object" &&
+          data !== null &&
+          "text" in data &&
+          typeof data.text === "string"
+        ) {
           addChunk(data.text);
         }
       });
+
+      esRef.current.onopen = () => {
+        retryRef.current = 0;
+      };
 
       esRef.current.onerror = () => {
         if (!isActive) return;
