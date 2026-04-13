@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useStream } from "../features/stream/useStream";
 
 export default function StreamRenderer({
@@ -11,6 +10,8 @@ export default function StreamRenderer({
   enabled: boolean;
 }) {
   useStream(url, enabled);
+
+  if (!enabled) return null;
 
   return null;
 }

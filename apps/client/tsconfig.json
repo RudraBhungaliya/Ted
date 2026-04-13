@@ -29,6 +29,6 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
     "**/*.mts"
-, "src/overlay/StreamRendeder.tsx"  ],
+, "src/overlay/StreamRenderer.tsx"  ],
   "exclude": ["node_modules"]
 }
