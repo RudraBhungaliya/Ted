@@ -11,7 +11,7 @@ export const createSSE = (url: string, onMessage: (data: any) => void) => {
   };
 
   es.onerror = (err) => {
-    es.close();
+    console.warn("SSE error:", err);
   };
 
   return es; // Event Source
