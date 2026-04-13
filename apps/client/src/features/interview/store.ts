@@ -3,7 +3,7 @@ import { create } from "zustand";
 type InterviewState = {
     isRecording: boolean;
     streamData: string[];
-
+    
     start: () => void;
     stop: () => void;
     addChunk: (chunk : string) => void;
