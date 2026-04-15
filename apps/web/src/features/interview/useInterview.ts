@@ -11,6 +11,7 @@ export const useInterview = () => {
     const stopInterview = useInterviewStore((s) => s.stop);
 
     const handleStart = async () => {
+        startInterview();
         try {
             const session = await startSession();
             const resolvedSessionId =
@@ -25,17 +26,15 @@ export const useInterview = () => {
                     console.error("Audio Upload Failed", err);
                 }
             });
-
-            startInterview();
         }
         catch(err) {
-            console.error("Failed to start interview", err);
+            console.error("Failed to start interview server session", err);
         }
     };
 
     const handleStop = async () => {
-        stop();
         stopInterview();
+        stop();
 
         if (sessionIdRef.current) {
             try {
