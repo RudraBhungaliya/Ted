@@ -58,7 +58,7 @@ All interactions are stored and can be reviewed later. This enables post-session
 
 ## System Architecture
 
-### Client (Next.js)
+### Web (Next.js)
 
 ---
 
