@@ -1,8 +1,9 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { useInterviewStore } from "../features/interview/store";
-import { X, Activity } from "lucide-react";
+import { X, Activity, EyeOff, Maximize2, Mic } from "lucide-react";
+import TranscriptView from "../components/ui/TranscriptView";
 
 type Props = {
   children?: ReactNode;
@@ -12,56 +13,74 @@ type Props = {
 
 export default function FloatingPanel({ children, onStop }: Props) {
   const isRecording = useInterviewStore((state) => state.isRecording);
+  const [isStealth, setIsStealth] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   if (!isRecording) return null;
 
   return (
     <>
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[380px] rounded-2xl overflow-hidden shadow-[0_0_80px_rgba(139,92,246,0.15)] backdrop-blur-2xl z-50 animate-in fade-in zoom-in duration-300 border border-white/10">
+      <div 
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`fixed z-50 transition-all duration-500 ease-in-out ${
+          isStealth 
+            ? "top-10 right-10 w-[240px] h-auto max-h-[200px] opacity-40 hover:opacity-100 bg-black/40 backdrop-blur-sm border-transparent shadow-none" 
+            : "top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[400px] bg-[#0A0A0A]/90 backdrop-blur-2xl border-white/10 shadow-[0_0_80px_rgba(139,92,246,0.15)]"
+        } rounded-2xl overflow-hidden border`}
+      >
         
-        {/* Sleek dark glass with purple neon mesh gradient effect */}
-        <div className="absolute inset-0 bg-[#0A0A0A]/80"></div>
-        <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-purple-500/20 to-transparent blur-2xl"></div>
-        <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-500/20 rounded-full blur-3xl"></div>
+        {/* Glow Effects (only in standard mode) */}
+        {!isStealth && (
+          <>
+            <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-purple-500/10 to-transparent blur-2xl pointer-events-none"></div>
+            <div className="absolute bottom-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          </>
+        )}
         
         {/* Content container */}
-        <div className="relative z-10 w-full h-full flex flex-col items-center justify-between p-5">
+        <div className="relative z-10 w-full h-full flex flex-col p-4">
           
-          {/* Top Bar with Close Button */}
-          <div className="w-full flex justify-end">
-            <button 
-              onClick={onStop} 
-              className="text-zinc-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-full p-2 transition-all"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Center Logo & Brand */}
-          <div className="flex flex-col items-center -mt-4 gap-6">
-            {/* Reflex Activity Logo */}
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl flex items-center justify-center relative shadow-[0_0_30px_rgba(168,85,247,0.4)]">
-              <div className="absolute inset-px bg-[#0a0a0a] rounded-2xl z-0"></div>
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 to-indigo-600/20 rounded-2xl z-0"></div>
-              <Activity className="w-10 h-10 text-purple-400 z-10 relative" strokeWidth={2.5} />
+          {/* Top Bar */}
+          <div className={`flex items-center justify-between mb-4 ${isStealth && !isHovered ? 'opacity-0' : 'opacity-100'} transition-opacity`}>
+            
+            <div className="flex items-center gap-2">
+               {isStealth ? (
+                 <Mic className="w-4 h-4 text-purple-400 animate-pulse" />
+               ) : (
+                 <Activity className="w-5 h-5 text-purple-400" />
+               )}
+               {!isStealth && <span className="font-semibold text-sm text-zinc-200">Reflex Active</span>}
             </div>
 
-            <div className="text-center space-y-2">
-              <h2 className="text-white text-2xl font-bold tracking-tight">Reflex Active</h2>
-              <p className="text-sm font-medium text-purple-400 animate-pulse">Initializing streaming...</p>
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setIsStealth(!isStealth)} 
+                className="text-zinc-500 hover:text-white bg-white/5 hover:bg-white/10 rounded-md p-1.5 transition-all"
+                title={isStealth ? "Expand" : "Stealth Mode"}
+              >
+                {isStealth ? <Maximize2 className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+              <button 
+                onClick={onStop} 
+                className="text-zinc-500 hover:text-red-400 bg-white/5 hover:bg-red-500/10 rounded-md p-1.5 transition-all"
+                title="Stop & Close"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
-          {/* Bottom Loading Indicator */}
-          <div className="mb-6 flex gap-1 items-center justify-center w-full">
-            <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "0ms" }}></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "150ms" }}></div>
-            <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-bounce" style={{ animationDelay: "300ms" }}></div>
+          {/* Transcript Area */}
+          <div className={`flex-1 overflow-y-auto w-full ${isStealth ? 'text-xs text-zinc-400' : 'bg-black/40 rounded-xl border border-white/5 p-3 text-sm text-zinc-300'}`}>
+            <TranscriptView />
           </div>
 
+          {/* Render children hidden to keep logic intact */}
           <div className="hidden">
             {children}
           </div>
+
         </div>
       </div>
     </>
