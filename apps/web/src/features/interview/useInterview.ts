@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useMic } from "../audio/useMic";
-import { dbService } from "../../lib/db";
+import { dbService } from "../../lib/db/postgre";
 import { useInterviewStore } from "./store";
 
 export const useInterview = () => {
