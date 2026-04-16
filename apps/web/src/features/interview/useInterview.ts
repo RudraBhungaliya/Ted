@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useMic } from "../audio/useMic";
-import { sendAudioChunk, startSession, stopSession } from "../../lib/api";
+import { dbService } from "../../lib/db";
 import { useInterviewStore } from "./store";
 
 export const useInterview = () => {
@@ -13,22 +13,20 @@ export const useInterview = () => {
     const handleStart = async () => {
         startInterview();
         try {
-            const session = await startSession();
-            const resolvedSessionId =
-                session?.sessionId ?? session?.id ?? session?.session_id ?? "default";
-            sessionIdRef.current = String(resolvedSessionId);
+            const session = await dbService.startDBSession("New Interview Session");
+            sessionIdRef.current = session.id;
 
             await start(async (blob) => {
                 try {
-                    await sendAudioChunk(sessionIdRef.current ?? "default", blob);
+                    await dbService.saveAudioChunk(sessionIdRef.current!, blob);
                 }
                 catch(err) {
-                    console.error("Audio Upload Failed", err);
+                    console.error("Audio Save Failed", err);
                 }
             });
         }
         catch(err) {
-            console.error("Failed to start interview server session", err);
+            console.error("Failed to start indexeddb session", err);
         }
     };
 
@@ -38,10 +36,14 @@ export const useInterview = () => {
 
         if (sessionIdRef.current) {
             try {
-                await stopSession(sessionIdRef.current);
+                await dbService.stopDBSession(sessionIdRef.current);
             } catch (err) {
                 console.error("Failed to stop session", err);
             } finally {
+                // Ensure the list is re-fetched if we are displaying it. 
+                // We will handle this in the page level or use a callback mechanism, 
+                // but setting event allows components to know session stopped.
+                window.dispatchEvent(new Event('session-stopped'));
                 sessionIdRef.current = null;
             }
         }
