@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { dbService, Session } from '../../lib/db';
+import { dbService, Session } from '../../lib/db/postgre';
 import { format, isToday, isYesterday } from 'date-fns';
 
 export interface GroupedSessions {
