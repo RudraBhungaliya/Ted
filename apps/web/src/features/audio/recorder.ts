@@ -13,7 +13,7 @@ export const createRecorder = (
     }
 
     const start = () => {
-        recorder.start(1000);// chunk every 1s
+        recorder.start(300);// chunk every 300ms
     } 
 
     const stop = () => {

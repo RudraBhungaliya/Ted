@@ -18,7 +18,15 @@ export const useInterview = () => {
 
             await start(async (blob) => {
                 try {
-                    await dbService.saveAudioChunk(sessionIdRef.current!, blob);
+                    const formData = new FormData();
+                    formData.append("audio", blob);
+                    formData.append("sessionId", sessionIdRef.current!);
+
+                    await fetch("/api/audio/upload", {
+                        method : "POST",
+                        body : formData,
+                    });
+
                 }
                 catch(err) {
                     console.error("Audio Save Failed", err);
