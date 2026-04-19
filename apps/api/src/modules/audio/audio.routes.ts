@@ -1,8 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 
-import { sessions } from "../../web/src/lib/realtime/sessions";
-import { processAudio } from "../../web/src/lib/realtime/pipeline";
+import { sessions } from "../../../../web/src/lib/realtime/sessions";
+import { processAudio } from "../../../../web/src/lib/realtime/pipeline";
 
 const router = Router();
 const upload = multer();
