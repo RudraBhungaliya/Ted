@@ -1,48 +1,39 @@
+import { Router } from "express";
+import multer from "multer";
+
 import { sessions } from "../../web/src/lib/realtime/sessions";
 import { processAudio } from "../../web/src/lib/realtime/pipeline";
 
-export async function POST(req: Request) {
-  const form = await req.formData();
+const router = Router();
+const upload = multer();
 
-  const audio = form.get("audio") as Blob;
-  const sessionId = form.get("sessionId") as string;
+router.post("/", upload.single("audio"), async (req, res) => {
+    const sessionId = req.body.sessionId;
+    const file = req.file;
 
-  if (!sessions[sessionId]) {
-    sessions[sessionId] = {
-      buffer: [],
-      textBuffer: "",
-      lastActive: Date.now(),
-    };
-  }
+    if (!sessionId || !file) return res.sendStatus(400);
 
-  sessions[sessionId].buffer.push(audio);
+    if (!sessions[sessionId]) {
+        sessions[sessionId] = {
+            buffer: [],
+            textBuffer: "",
+            lastActive: Date.now(),
+        };
+    }
 
-  // async trigger (non-blocking)
-  setTimeout(() => processAudio(sessionId), 0);
+    const session = sessions[sessionId];
 
-  return new Response("ok");
-}
+    const chunk = file.buffer.buffer.slice(
+        file.buffer.byteOffset,
+        file.buffer.byteOffset + file.buffer.byteLength,
+    ) as ArrayBuffer;
+    session.buffer.push(new Blob([chunk]));
+    session.lastActive = Date.now();
 
-// // processing layer
-// async function processAudio(sessionId : string){
-//     const chunks = buffers[sessionId];
+    // trigger pipeline async
+    setTimeout(() => processAudio(sessionId), 0);
 
-//     if(chunks.length < 3) return;
-//     const merged = new Blob(chunks, { type : "audio/webm" });
-//     buffers[sessionId] = [];
+    res.send("ok");
+});
 
-//     // TEMp SIT
-//     const fakeText = "User speaking...";
-
-//     sendToClients({
-//         type : "transription",
-//         text : fakeText,
-//     })
-
-//     // AI Simulation
-//     sendToClients({
-//         type : "ai",
-//         text : "Ai response streaming",
-//     });
-
-// }
+export default router;
