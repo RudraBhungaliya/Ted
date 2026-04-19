@@ -1,26 +1,26 @@
-let clients : ReadableStreamDefaultController[] = [];
+import { Router } from "express";
+import { addClient, removeClient } from "../../web/src/lib/realtime/eventBus";
 
-export async function GET(){
-    const stream = new ReadableStream({
-        start(controller){
-            clients.push(controller);
-        },
-        cancel(controller){
-            clients = clients.filter(c => c !== controller);
-        }
-    });
+const router = Router();
 
-    return new Response(stream, {
-        headers : {
-            "Content-Type" : "text/event-stream",
-            "Cache-Control" : "no-cache",
-            "connection" : "keep-alive",
-        },
-    });
-}
+router.get("/", (req, res) => {
+    const sessionId = req.query.sessionId as string;
 
-export function sendToClients(data : any){
-    clients.forEach(c => {
-        c.enqueue(`data: ${JSON.stringify(data)}\n\n`);
+    if (!sessionId) return res.sendStatus(400);
+
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+
+    const controller = {
+        enqueue: (data: string) => res.write(data),
+    } as unknown as ReadableStreamDefaultController;
+
+    addClient(sessionId, controller);
+
+    req.on("close", () => {
+        removeClient(sessionId, controller);
     });
-}
+});
+
+export default router;
