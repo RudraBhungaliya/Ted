@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addClient, removeClient } from "../../web/src/lib/realtime/eventBus";
+import { addClient, removeClient } from "../../../../web/src/lib/realtime/eventBus";
 
 const router = Router();
 
