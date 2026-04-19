@@ -12,11 +12,14 @@
   "description": "",
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/multer": "^2.1.0",
     "@types/node": "^25.6.0",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "multer": "^2.1.1"
+    "form-data": "^4.0.5",
+    "multer": "^2.1.1",
+    "node-fetch": "^3.3.2"
   }
 }
