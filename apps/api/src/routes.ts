@@ -1,10 +1,14 @@
 import { Router } from "express";
-import audioRoutes from "./modules/audio/audio.routes";
-import streamRoutes from "./modules/stream/stream.routes";
+import modulesRouter from "./modules";
 
 const router = Router();
 
-router.use("/audio", audioRoutes);
-router.use("/stream", streamRoutes);
+// Mount all module routes
+router.use(modulesRouter);
+
+// Health check
+router.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
 
 export default router;

@@ -1,11 +1,10 @@
 import { Router } from "express";
-import multer from "multer";
-import { uploadActive, processChunk } from "./audio.controller";
+import { upload } from "../../shared/lib/multer";
+import * as audioController from "./audio.controller";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage() });
 
-router.post("/upload", upload.single("audio"), uploadActive);
-router.post("/chunk", upload.single("audio"), processChunk);
+router.post("/upload", upload.single("audio"), audioController.uploadActive);
+router.post("/process", upload.single("audio"), audioController.processChunk);
 
 export default router;

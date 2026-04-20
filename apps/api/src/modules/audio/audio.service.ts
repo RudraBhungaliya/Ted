@@ -1,4 +1,4 @@
-import { publish } from "../../lib/eventBus";
+import { publish } from "../../shared/lib/eventBus";
 import fetch from "node-fetch";
 import FormData from "form-data";
 
@@ -33,21 +33,29 @@ export const processChunk = async (file: UploadedAudioFile | undefined) => {
   });
   formData.append("model", "whisper-1");
 
-  const whisperRes = await fetch(
-    "https://api.xai.com/v1/audio/transcriptions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.GROK_API_KEY}`,
+  try {
+    const whisperRes = await fetch(
+      "https://api.xai.com/v1/audio/transcriptions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${process.env.GROK_API_KEY}`,
+        },
+        body: formData as any,
       },
-      body: formData as any,
-    },
-  );
+    );
 
-  const whisperData = (await whisperRes.json()) as WhisperResponse;
-  const text: string = whisperData?.text || "";
+    const whisperData = (await whisperRes.json()) as WhisperResponse;
+    const text: string = whisperData?.text || "";
 
-  if (!text.trim()) return;
+    if (!text.trim()) return { success: false, text: "" };
+
+    publish({ type: "audio_processed", data: { text } });
+    return { success: true, text };
+  } catch (error) {
+    console.error("Audio processing error:", error);
+    throw error;
+  }
 
   publish({
     type: "transcript",

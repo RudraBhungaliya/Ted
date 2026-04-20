@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { asyncHandler } from "../../utils/asyncHandler";
-import * as audioService from "./audioService";
+import { asyncHandler } from "../../shared/utils/asyncHandler";
+import * as audioService from "./audio.service";
 
 export const uploadActive = asyncHandler(async (req: Request, res: Response) => {
   const result = await audioService.uploadActive(req.file);
@@ -13,8 +13,11 @@ export const uploadActive = asyncHandler(async (req: Request, res: Response) => 
 
 export const processChunk = asyncHandler(
   async (req: Request, res: Response) => {
-    await audioService.processChunk(req.file);
+    const result = await audioService.processChunk(req.file);
 
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      data: result,
+    });
   },
 );
