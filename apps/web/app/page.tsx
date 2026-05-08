@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { ArrowUpRight, Activity, Zap, Mic } from "lucide-react";
-import Overlay from "../overlay/Overlay";
-import { useInterview } from "../features/interview/useInterview";
-import { useInterviewStore } from "../features/interview/store";
-import { useSessions } from "../features/interview/useSessions";
+import Overlay from "./overlay/Overlay";
+import { useInterview } from "./features/interview/useInterview";
+import { useInterviewStore } from "./features/interview/store";
+import { useSessions } from "./features/interview/useSessions";
 
 export default function Home() {
   const [isDetectable, setIsDetectable] = useState(true);

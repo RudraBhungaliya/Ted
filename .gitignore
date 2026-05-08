@@ -34,3 +34,10 @@ yarn-error.log*
 client
 /client
 apps/client
+
+NEXT_STEPS.md
+ARCHITECTURE.md
+QUICK_START.md
+REFACTORING_SUMMARY.md
+STRUCTURE_CHANGES.md
+packages

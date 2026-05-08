@@ -10,7 +10,7 @@ router = APIRouter(
     tags=["interview"],
 )
 
-@router.post("stream")
+@router.post("/stream")
 async def stream_interview(req : InterviewRequest):
     async def event_generator():
         async for token in run_pipeline(req.query):
