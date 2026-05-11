@@ -1,20 +1,21 @@
 from fastapi import APIRouter
-from fastapi import WebSocker
+from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
 
-from app.api.audio import manager
+from app.services.realtime.manager import manager
 from app.services.audio.stt import stt_provider
 from app.services.audio.stt import BaseSTTProvider
+from app.services.interview.pipeline import run_pipeline
 
 router = APIRouter()
 
-@router.WebSocket("/ws/audio/{session_id}")
+@router.websocket("/ws/audio/{session_id}")
 async def audio_ws(
     websocket : WebSocket,
     session_id : str,
 ) :
     
-    await manager.connection(
+    await manager.connect(
         session_id,
         websocket,
     )
@@ -35,7 +36,7 @@ async def audio_ws(
                     }
                 )
                 
-                full_query = manager.get_full_query(session_id)
+                full_query = manager.get_full_transcription(session_id)
                 
                 response = ""
                 
