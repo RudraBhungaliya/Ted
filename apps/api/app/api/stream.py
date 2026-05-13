@@ -1,19 +1,44 @@
-from fastapi import APIRouter
-from fastapi.responses import StreamingResponse
+from fastapi import (
+    APIRouter,
+    WebSocket,
+    WebSocketDisconnect
+)
 
-from app.services.interview.pipeline import run_pipeline
+from app.services.realtime.manager import ( manager )
+
+from app.services.realtime.sse import (
+    stream_interview
+)
+
 router = APIRouter()
 
-@router.get("/stream")
-async def stream(
-    query : str,
+@router.websocket("ws:/{session_id}")
+async def websocket_endpoint(
+    websocket : WebSocket,
+    session_id : str,
 ) :
-    
-    async def token_generator() :
-        async for token in run_pipeline(query) :
-            yield f"data: {token}\n\n"
-            
-    return StreamingResponse(
-        token_generator(),
-        media_type = "text/event-stream",
+    await manager.connect(
+        session_id,
+        websocket,
     )
+    
+    try :
+        while True :
+            data = await websocket.receive_json()
+            query = data.get("query", "")
+            
+            if not query :
+                continue
+            
+            manager.append_trancript(
+                session_id,
+                query,
+            )
+            
+            await stream_interview(# using sse
+                session_id,
+                query,
+            )
+            
+    except WebSocketDisconnect :
+        manager.disconnect(session_id)
