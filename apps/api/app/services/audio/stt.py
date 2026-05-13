@@ -1,13 +1,15 @@
-from abc import ABC, abstractmethod
+from app.services.audio.providers.base import (
+    DeepgramProvider
+)
 
-class BaseSTTProvider(ABC) :
-    @abstractmethod
-    async def transcribe(self, audio_chunk : bytes) -> str :
-        "Transcribe the audio chunk and return the transcribed text"
-        pass
-    
-    class MockSTTProvider(BaseSTTProvider) :
-        async def transcribe(self, audio_chunk : bytes) -> str : 
-            return "test transcription"
+class STTService :
+    def __init__(self) :
+        self.provider = DeepgramProvider()
         
-stt_provider = MockSTTProvider()
+    async def transcribe(
+        self,
+        audio_chunk : bytes
+    ) -> str :
+        return await self.provider.transcrbe(audio_chunk)
+    
+stt_services = STTService() 
