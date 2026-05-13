@@ -1,4 +1,6 @@
-from app.core.settings import Settings
+from app.core.settings import settings
+
+config = settings
 
 class Config :
     OPENAI_API_KEY = settings.OPENAI_API_KEY

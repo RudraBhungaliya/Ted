@@ -1,13 +1,24 @@
 import logging
+import sys
 
-logging.basicConfig(
-    level = logging.INFO,
-    format = (
-        "%(asctime)s | "
-        "%(levelname)s | "
-        "%(name)s | "
-        "%(message)s"
-    ),
+
+LOG_FORMAT = (
+    "%(asctime)s | "
+    "%(levelname)s | "
+    "%(name)s | "
+    "%(message)s"
 )
 
-logger = logging.getlogger("ted")
+
+def setup_logging():
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format=LOG_FORMAT,
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+
+logger = logging.getLogger("ted")
