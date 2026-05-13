@@ -1,26 +1,24 @@
-from openai import AsyncOpenAI 
+from app.services.ai.providers.grok import GrokProvider
 
-from app.core.settings import settings
 
-client = AsyncOpenAI(
-    api_key = settings.OPENAI_API_KEY
-)
+class LLMService:
 
-async def get_response(prompt : str) -> str :
-    stream = await client.chat.completions.create(
-        model=settings.MODEL_NAME,
-        messages=[
-            {
-                "role" : "user",
-                "content" : prompt
-            }
-        ],
-        stream = True
-    )
-    
-    async for chunk in stream :
-        delta = chunk.choices[0].delta.content
-        
-        if delta : 
-            yield delta
-    
+    def __init__(self):
+
+        self.provider = GrokProvider()
+
+    async def generate_response(
+        self,
+        prompt: str,
+        system_prompt: str | None = None,
+        temperature: float = 0.7,
+    ) -> str:
+
+        return await self.provider.generate_response(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=temperature,
+        )
+
+
+llm_service = LLMService()
