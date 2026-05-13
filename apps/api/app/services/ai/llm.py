@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from app.services.ai.providers.grok import GrokProvider
 
 
@@ -19,6 +20,19 @@ class LLMService:
             system_prompt=system_prompt,
             temperature=temperature,
         )
+        
+    async def stream_response(
+        self,
+        prompt: str
+    ) -> AsyncGenerator[str, None]:
+
+        response = await self.generate_response(
+            prompt=prompt
+        )
+
+        for token in response.split():
+            yield token + " "
+
 
 
 llm_service = LLMService()
