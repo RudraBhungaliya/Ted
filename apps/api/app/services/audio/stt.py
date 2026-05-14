@@ -1,4 +1,4 @@
-from app.services.audio.providers.base import (
+from app.services.audio.providers.deepgram import (
     DeepgramProvider
 )
 
@@ -10,6 +10,6 @@ class STTService :
         self,
         audio_chunk : bytes
     ) -> str :
-        return await self.provider.transcrbe(audio_chunk)
+        return await self.provider.transcribe(audio_chunk)
     
-stt_services = STTService() 
+stt_service = STTService() 
