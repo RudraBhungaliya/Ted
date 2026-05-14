@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class AudioChunk(BaseModel) :
+class AudioChunkMetadata(BaseModel) :
     session_id : str
     chunk_index : int
     mime_type : str
-    size : int
+    size : int | None = None
 
 class TranscriptChunk(BaseModel) :
     type : Literal[

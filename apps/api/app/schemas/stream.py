@@ -1,14 +1,16 @@
 from pydantic import BaseModel
 from typing import Optional
 
-class StreamRequest(BaseModel) :
+class StreamQueryRequest(BaseModel) :
     query : str
-    session_id : Optional[str] = None
+    session_id : str | None = None
 
-class StreamResponse(BaseModel) :
+class StreamChunkResponse(BaseModel) :
     type : Literal[
         "response_chunk",
         "response_end",
+        "partial_transcript",
+        "final_transcript",
         "error",
     ]
     
