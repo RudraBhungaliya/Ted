@@ -6,6 +6,10 @@ from app.services.cache.keys import (
     transcript_key
 )
 
+from app.services.cache.repository import (
+    cache_repository
+)
+
 class SessionCacheService :
     async def save_trasnscript(
         self,
@@ -14,9 +18,10 @@ class SessionCacheService :
     ) :
         client = redis_manager.get_client()
         
-        await client.set(
+        await cache_repository.set(
             transcript_key(session_id),
             transcript,
+            ttl=3600
         )
         
     async def get_transcript(
