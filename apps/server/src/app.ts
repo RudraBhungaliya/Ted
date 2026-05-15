@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { registerRoutes } from "./api/index.js";
+import "./types/fastify.js";
 
 const app = Fastify({// fastapi instance
     logger  : false,
