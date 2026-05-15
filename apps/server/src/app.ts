@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
+import { registerRoutes } from "./api/index.js";
 
 const app = Fastify({// fastapi instance
     logger  : false,
@@ -11,6 +12,8 @@ await app.register(cors, {
     origin : true,
     credentials : true,
 })
+
+await registerRoutes(app);
 
 app.get(
     "/health",// health endpoint for Docker checks, ...
