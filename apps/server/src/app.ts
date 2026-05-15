@@ -1,0 +1,39 @@
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import { env } from "./config/env.js";
+import { logger } from "./config/logger.js";
+
+const app = Fastify({// fastapi instance
+    logger  : false,
+});
+
+await app.register(cors, {
+    origin : true,
+    credentials : true,
+})
+
+app.get(
+    "/health",// health endpoint for Docker checks, ...
+    async () => {
+        return {
+            status : "ok",
+        };
+    }
+);
+
+const start = async () => {
+    try {
+        await app.listen({
+            port : Number(env.PORT),
+            host : "0.0.0.0",
+        });
+
+        logger.info(`Server is running on port ${env.PORT}`);
+    }
+    catch(err){
+        logger.error(err);
+        process.exit(1);//terminate
+    }
+}
+
+start();
