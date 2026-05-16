@@ -17,6 +17,11 @@ import {
 } from "../../utils/validate.js";
 
 import {
+    setAuthCookie,
+    clearAuthCookie,
+} from "../../lib/cookies.js";
+
+import {
     authMiddleware,
 } from "../../middleware/auth.js";
 
@@ -33,9 +38,16 @@ export async function authRoutes(
 
             const result = await signup(body);
 
+            setAuthCookie(
+                reply,
+                result.token,
+            );
+
             return reply.send({
-                success : true,
-                data : result,
+                success: true,
+                data: {
+                    user: result.user,
+                },
             });
         }
     );
@@ -50,10 +62,32 @@ export async function authRoutes(
 
             const result = await login(body);
 
+            setAuthCookie(
+                reply,
+                result.token,
+            );
+
             return reply.send({
-                success : true,
-                data : result,
+                success: true,
+                data: {
+                    user: result.user,
+                },
             });
+        }
+    );
+
+    app.post(
+        "/logout",
+        async (_, reply) => {
+
+            clearAuthCookie(
+                reply
+            );
+
+            return reply.send({
+                success: true,
+            });
+
         }
     );
 

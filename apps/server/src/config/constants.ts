@@ -17,6 +17,12 @@ export const REDIS_CHANNELS = {
     AI_STREAM : "ai-stream",
 }
 
+export const REDIS_KEYS = {
+
+    SESSION: "session",
+
+};
+
 export const SESSION_TYPES = {
     INTERVIEW  : "INTERVIEW",
     MEETING : "MEETING",

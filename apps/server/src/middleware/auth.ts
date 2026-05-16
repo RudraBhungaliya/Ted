@@ -5,25 +5,24 @@ import {
 
 import { verifyToken } from "../lib/jwt.js";
 
+import {
+    COOKIE_NAME,
+} from "../lib/cookies.js";
+
 export async function authMiddleware(
     request : FastifyRequest,
     reply : FastifyReply, 
 ) {
     try{
-        const authHeader = request.headers.authorization;
-        if(!authHeader){
+        const token =
+            request.cookies[
+                COOKIE_NAME
+            ];
+
+        if (!token) {
             return reply.status(401).send({
                 success : false,
                 message : "Auth Header missing",
-            });
-        }
-
-        const token = authHeader.split(" ")[1];
-
-        if(!token){
-            return reply.status(401).send({
-                success : false,
-                message : "Token missing",
             });
         }
 

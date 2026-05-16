@@ -4,6 +4,7 @@ import { env } from "./config/env.js";
 import { logger } from "./config/logger.js";
 import { registerRoutes } from "./api/index.js";
 import "./types/fastify.js";
+import cookie from "@fastify/cookie";
 
 const app = Fastify({// fastapi instance
     logger  : false,
@@ -13,6 +14,10 @@ await app.register(cors, {
     origin : true,
     credentials : true,
 })
+
+await app.register(cookie, {
+    secret: env.JWT_SECRET,
+});
 
 await registerRoutes(app);
 
