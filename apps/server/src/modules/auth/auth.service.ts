@@ -11,7 +11,7 @@ import {
 } from "../../lib/hash.js";
 
 import {
-    generateToken,
+    generateAccessToken,
 } from "../../lib/jwt.js";
 
 import {
@@ -48,12 +48,17 @@ export async function signup(
         password : hashedPassword,
     });
 
-    const token = generateToken({
+    const accessToken = generateAccessToken({
+        userId : user.id,
+    });
+
+    const refreshToken = generateAccessToken({
         userId : user.id,
     });
 
     return {
-        token,
+        accessToken,
+        refreshToken,
         user,
     };
 }
@@ -76,12 +81,17 @@ export async function login(
         throw new UnauthorizedError("Invalid email or password");
     }
 
-    const token = generateToken({
+    const accessToken = generateAccessToken({
+        userId : user.id,
+    });
+
+    const refreshToken = generateAccessToken({
         userId : user.id,
     });
 
     return {
-        token,
+        accessToken,
+        refreshToken,
         user,
     };
 }

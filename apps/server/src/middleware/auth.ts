@@ -6,7 +6,7 @@ import {
 import { verifyToken } from "../lib/jwt.js";
 
 import {
-    COOKIE_NAME,
+    ACCESS_COOKIE,
 } from "../lib/cookies.js";
 
 export async function authMiddleware(
@@ -14,10 +14,7 @@ export async function authMiddleware(
     reply : FastifyReply, 
 ) {
     try{
-        const token =
-            request.cookies[
-                COOKIE_NAME
-            ];
+        const token = (request as any).cookies[ACCESS_COOKIE];
 
         if (!token) {
             return reply.status(401).send({

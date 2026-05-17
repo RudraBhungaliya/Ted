@@ -5,7 +5,7 @@ type JwtPayload = {// for ts for type specifying
     userId : string;
 };
 
-export function generateToken(
+export function generateAccessToken(
     payload : JwtPayload,
 ) {
     return jwt.sign(
@@ -15,6 +15,15 @@ export function generateToken(
             expiresIn : "7d",
         }
     );
+}
+
+export function verifyRefreshToken(
+    token : string,
+) {
+    return jwt.verify(
+        token,
+        env.JWT_SECRET,
+    ) as JwtPayload;
 }
 
 export function verifyToken(
