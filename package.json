@@ -1,5 +1,10 @@
 {
   "dependencies": {
-    "@fastify/cookie": "^11.0.2"
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/websocket": "^11.2.0",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1"
   }
 }

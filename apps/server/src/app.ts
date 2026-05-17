@@ -21,14 +21,7 @@ await app.register(cookie, {
 
 await registerRoutes(app);
 
-app.get(
-    "/health",// health endpoint for Docker checks, ...
-    async () => {
-        return {
-            status : "ok",
-        };
-    }
-);
+
 
 const start = async () => {
     try {
