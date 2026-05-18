@@ -22,9 +22,11 @@ export async function realtimeGateway(
             websocket : true,
         } as any,
         (connection: any, req: any) => {
+            const socket = connection.socket;
+
             socket.on(
                 "message",
-                async (rawMessage) => {
+                async (rawMessage: string | Buffer) => {
                     try {
                         const message = JSON.parse(
                             rawMessage.toString(),
@@ -38,8 +40,7 @@ export async function realtimeGateway(
 
                             socket.send(
                                 JSON.stringify({
-                                    event : 
-                                    REALTIME_EVENTS.connection.connected,
+                                    event : REALTIME_EVENTS.connection.connected,
                                     payload : {
                                         sessionId : payload.sessionId,
                                     },
@@ -52,7 +53,7 @@ export async function realtimeGateway(
                         }
                     }
                     catch(err){
-                        connection.socket.send(
+                        socket.send(
                             JSON.stringify({
                                 event : REALTIME_EVENTS.connection.error,
                                 payload : {
