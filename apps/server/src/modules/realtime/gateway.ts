@@ -12,6 +12,8 @@ import {
     realtimeManager,
 } from "./manager.js";
 
+import type { WebSocket } from "@fastify/websocket";
+
 export async function realtimeGateway(
     app : FastifyInstance,
 ){
@@ -20,9 +22,8 @@ export async function realtimeGateway(
     app.get(
         "/realtime", {
             websocket : true,
-        } as any,
-        (connection: any, req: any) => {
-            const socket = connection.socket;
+        },
+        (socket: WebSocket, req: any) => {
 
             socket.on(
                 "message",
@@ -65,7 +66,7 @@ export async function realtimeGateway(
                 }
             );
 
-            connection.socket.on(
+            socket.on(
                 "close",
                 () => {
                     console.log("Socket Disconnected");

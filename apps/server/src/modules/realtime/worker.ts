@@ -8,6 +8,11 @@ import {
     emitPartialTranscript,
 } from "./transcript.js";
 
+import {
+    initializeDeepgramSession,
+    sendAudioToDeepgram,
+} from "./deepgram.js";
+
 export async function startRealtimeWorker(){
     await subscribeEvent(
         REDIS_CHANNELS.audio,
@@ -15,20 +20,21 @@ export async function startRealtimeWorker(){
         async (payload) => {
             console.log("Processing audio data for session:");
 
-            const transcript = await "simulated transcript";
+            initializeDeepgramSession(
+                payload.sessionId
+            );
 
-            emitPartialTranscript(
+            sendAudioToDeepgram(
                 payload.sessionId,
-                transcript,
+
+                Buffer.from(
+                    payload.audio,
+                    "base64"
+                )
             );
 
-            await publishEvent(
-                REDIS_CHANNELS.transcript,
-                {
-                    sessionId : payload.sessionId,
-                    text : transcript,
-                }
-            );
+            // Audio forwarded to Deepgram; transcription events are
+            // handled by the Deepgram session and emitted from there.
         }
     );
 }

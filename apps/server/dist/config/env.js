@@ -10,5 +10,6 @@ const envSchema = z.object({
     GOOGLE_CLIENT_SECRET: z.string(),
     MICROSOFT_CLIENT_ID: z.string(),
     MICROSOFT_CLIENT_SECRET: z.string(),
+    DEEPGRAM_API_KEY: z.string(),
 });
 export const env = envSchema.parse(process.env);
