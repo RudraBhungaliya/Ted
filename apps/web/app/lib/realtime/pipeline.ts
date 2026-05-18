@@ -1,5 +1,5 @@
 import { sessions } from "./sessions";
-import { emit } from "./eventBus";
+import { emit } from "./event";
 import { transcribe } from "../stt";
 import { streamGrok } from "../ai/grok";
 
