@@ -1,77 +1,74 @@
+import { FastifyInstance } from "fastify";
+
 import {
-    FastifyInstance,
-} from "fastify";
+    redis
+} from "../../lib/redis.js";
 
 import fastifyWebsocket from "@fastify/websocket";
 
-import {
-    REALTIME_EVENTS,
-} from "./events.js";
+import { REALTIME_EVENTS } from "./events.js";
 
-import {
-    realtimeManager,
-} from "./manager.js";
+import { realtimeManager } from "./manager.js";
 
 import type { WebSocket } from "@fastify/websocket";
 
-export async function realtimeGateway(
-    app : FastifyInstance,
-){
-    await app.register( fastifyWebsocket);
+export async function realtimeGateway(app: FastifyInstance) {
+  await app.register(fastifyWebsocket);
 
-    app.get(
-        "/realtime", {
-            websocket : true,
-        },
-        (socket: WebSocket, req: any) => {
+  app.get(
+    "/realtime",
+    {
+      websocket: true,
+    },
+    (socket: WebSocket, req: any) => {
+      socket.on("message", async (rawMessage: string | Buffer) => {
+        try {
+          const message = JSON.parse(rawMessage.toString());
 
-            socket.on(
-                "message",
-                async (rawMessage: string | Buffer) => {
-                    try {
-                        const message = JSON.parse(
-                            rawMessage.toString(),
-                        );
+          const { event, payload } = message;
 
-                        const { event, payload } = message;
+          if (event === REALTIME_EVENTS.session.start) {
+            realtimeManager.createSession(payload.sessionId);
+            realtimeManager.attachSocket(payload.sessionId, socket);
 
-                        if (event === REALTIME_EVENTS.session.start) {
-                            realtimeManager.createSession(payload.sessionId);
-                            realtimeManager.attachSocket(payload.sessionId, socket);
-
-                            socket.send(
-                                JSON.stringify({
-                                    event : REALTIME_EVENTS.connection.connected,
-                                    payload : {
-                                        sessionId : payload.sessionId,
-                                    },
-                                })
-                            );
-                        }
-
-                        if (event === REALTIME_EVENTS.audio.chunk) {
-                            console.log("Audio chunk received", payload);
-                        }
-                    }
-                    catch(err){
-                        socket.send(
-                            JSON.stringify({
-                                event : REALTIME_EVENTS.connection.error,
-                                payload : {
-                                    message : "Invalid Message",
-                                },
-                            })
-                        );
-                    }
-                }
+            socket.send(
+              JSON.stringify({
+                event: REALTIME_EVENTS.connection.connected,
+                payload: {
+                  sessionId: payload.sessionId,
+                },
+              }),
             );
+          }
 
-            socket.on(
-                "close",
-                () => {
-                    console.log("Socket Disconnected");
-                }
+          if (event === REALTIME_EVENTS.audio.chunk) {
+            console.log("Audio chunk received");
+
+            await redis.publish(
+              "realtime:audio",
+
+              JSON.stringify({
+                sessionId: payload.sessionId,
+
+                audio: payload.audio,
+              }),
             );
+          }
+        } catch (err) {
+          socket.send(
+            JSON.stringify({
+              event: REALTIME_EVENTS.connection.error,
+              payload: {
+                message: "Invalid Message",
+              },
+            }),
+          );
         }
-    );
+      });
+
+      socket.on("close", () => {
+        console.log("Socket Disconnected");
+      });
+    },
+  );
 }

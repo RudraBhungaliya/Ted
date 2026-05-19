@@ -1,61 +1,87 @@
 import { useRef } from "react";
-import { useMic } from "../audio/useMic";
+
+import { RealtimeClient } from "../../lib/realtime/client";
+
 import { dbService } from "../../lib/db/postgre";
+
 import { useInterviewStore } from "./store";
 
 export const useInterview = () => {
-    const { start, stop } = useMic();
-    const sessionIdRef = useRef<string | null>(null);
-    
-    const startInterview = useInterviewStore((s) => s.start);
-    const stopInterview = useInterviewStore((s) => s.stop);
+  const clientRef = useRef(new RealtimeClient());
 
-    const handleStart = async () => {
-        startInterview();
-        try {
-            const session = await dbService.startDBSession("New Interview Session");
-            sessionIdRef.current = session.id;
+  const realtimeSessionIdRef = useRef<string | null>(null);
 
-            await start(async (blob) => {
-                try {
-                    const formData = new FormData();
-                    formData.append("audio", blob);
-                    formData.append("sessionId", sessionIdRef.current!);
+  const dbSessionIdRef = useRef<string | null>(null);
 
-                    await fetch("/api/audio/upload", {
-                        method : "POST",
-                        body : formData,
-                    });
+  const startInterview = useInterviewStore((s) => s.start);
 
-                }
-                catch(err) {
-                    console.error("Audio Save Failed", err);
-                }
-            });
-        }
-        catch(err) {
-            console.error("Failed to start indexeddb session", err);
-        }
-    };
+  const stopInterview = useInterviewStore((s) => s.stop);
 
-    const handleStop = async () => {
-        stopInterview();
-        stop();
+  const setConnected = useInterviewStore((s) => s.setConnected);
 
-        if (sessionIdRef.current) {
-            try {
-                await dbService.stopDBSession(sessionIdRef.current);
-            } catch (err) {
-                console.error("Failed to stop session", err);
-            } finally {
-                // Ensure the list is re-fetched if we are displaying it. 
-                // We will handle this in the page level or use a callback mechanism, 
-                // but setting event allows components to know session stopped.
-                window.dispatchEvent(new Event('session-stopped'));
-                sessionIdRef.current = null;
-            }
-        }
-    };
+  const setPartialTranscript = useInterviewStore((s) => s.setPartialTranscript);
 
-    return { handleStart, handleStop };
-}
+  const appendFinalTranscript = useInterviewStore(
+    (s) => s.appendFinalTranscript,
+  );
+
+  const handleStart = async () => {
+    try {
+      const realtimeSessionId = crypto.randomUUID();
+
+      realtimeSessionIdRef.current = realtimeSessionId;
+
+      startInterview(realtimeSessionId);
+
+      const dbSession = await dbService.startDBSession("New Interview Session");
+
+      dbSessionIdRef.current = dbSession.id;
+
+      clientRef.current.connect(
+        realtimeSessionId,
+
+        (text, isFinal) => {
+          if (isFinal) {
+            appendFinalTranscript(text);
+
+            return;
+          }
+
+          setPartialTranscript(text);
+        },
+      );
+
+      setConnected(true);
+
+      await clientRef.current.startStreaming(realtimeSessionId);
+    } catch (err) {
+      console.error("Interview start failed", err);
+    }
+  };
+
+  const handleStop = async () => {
+    stopInterview();
+
+    clientRef.current.disconnect();
+
+    setConnected(false);
+
+    if (dbSessionIdRef.current) {
+      try {
+        await dbService.stopDBSession(dbSessionIdRef.current);
+      } catch (err) {
+        console.error("Failed to stop DB session", err);
+      }
+    }
+
+    realtimeSessionIdRef.current = null;
+
+    dbSessionIdRef.current = null;
+  };
+
+  return {
+    handleStart,
+
+    handleStop,
+  };
+};
