@@ -47,6 +47,30 @@ export function streamAiToken(
     );
 }
 
+export function interruptAiStream(
+    sessionId : string,
+){
+    const socket =
+        realtimeManager.getSocket(
+            sessionId,
+        );
+
+    if(!socket) return;
+
+    socket.send(
+        JSON.stringify({
+            event :
+                REALTIME_EVENTS
+                    .ai
+                    .interrupt,
+
+            payload : {
+                sessionId,
+            },
+        }),
+    );
+}
+
 export function endAiStream(
     sessionId : string,
 ){

@@ -1,51 +1,62 @@
-import {
-    realtimeManager
-} from "./manager.js";
+import { realtimeManager } from "./manager.js";
 
-import {
-    REALTIME_EVENTS,
-} from "./events.js";
+import { REALTIME_EVENTS } from "./events.js";
 
-export function emitPartialTranscript(
-    sessionId : string,
-    text : string,
-) {
+import { streamAiResponse } from "../ai/stream.js";
 
-    realtimeManager.appendTranscript(sessionId, text);
+import type { ConversationTurn } from "../ai/types.js";
 
-    const socket = realtimeManager.getSocket(sessionId);
+export async function emitPartialTranscript(sessionId: string, text: string) {
+  realtimeManager.appendTranscript(sessionId, text);
 
-    if(!socket) return;
+  const socket = realtimeManager.getSocket(sessionId);
 
-    socket.send(
-        JSON.stringify({
-            event : REALTIME_EVENTS.transcript.partial,
-            payload : {
-                sessionId,
-                text,
-            },
-        })
-    );
+  if (!socket) return;
+
+  socket.send(
+    JSON.stringify({
+      event: REALTIME_EVENTS.transcript.partial,
+      payload: {
+        sessionId,
+        text,
+      },
+    }),
+  );
 }
 
-export function emitFinalTranscript(
-    sessionId : string,
-    text : string,
-){  
-    realtimeManager.appendTranscript(sessionId, text);
+export async function emitFinalTranscript(sessionId: string, text: string) {
+  realtimeManager.appendTranscript(sessionId, text);
 
-    const socket = realtimeManager.getSocket(sessionId);
+  const socket = realtimeManager.getSocket(sessionId);
 
-    if(!socket) return;
+  if (!socket) return;
 
-    socket.send(
-        JSON.stringify({
-            event : REALTIME_EVENTS.transcript.final,
-            payload : {
-                sessionId,
-                text,
-            },
-        })
-    );
+  socket.send(
+    JSON.stringify({
+      event: REALTIME_EVENTS.transcript.final,
+      payload: {
+        sessionId,
+        text,
+      },
+    }),
+  );
+  const fullTranscript = realtimeManager.getFullTranscript(sessionId);
+  
+  const turns: ConversationTurn[] = [
+    {
+      role: "user",
+  
+      text: fullTranscript,
+  
+      timestamp: Date.now(),
+    },
+  ];
+  
+  console.log("Starting AI stream...");
+  
+  await streamAiResponse(
+    sessionId,
+    turns,
+  );
 }
 
