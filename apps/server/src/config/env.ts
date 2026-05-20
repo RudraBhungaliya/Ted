@@ -10,6 +10,10 @@ const envSchema = z.object({
 
     JWT_SECRET: z.string(),
 
+    XAI_API_KEY : z.string(),
+
+    XAI_API_BASE_URL : z.string(),
+
     API_BASE_URL: z.string(),
 
     GOOGLE_CLIENT_ID: z.string(),

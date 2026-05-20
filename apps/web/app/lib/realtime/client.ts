@@ -11,6 +11,12 @@ type TranscriptHandler = (
     isFinal : boolean,
 ) => void;
 
+type AiTokenHandler = (
+
+    token : string,
+
+) => void;
+
 export class RealtimeClient {
     private ws : 
         WebSocket | null = null;
@@ -23,6 +29,7 @@ export class RealtimeClient {
     connect (
         sessionId : string,
         onTranscript : TranscriptHandler,
+        onAiToken : AiTokenHandler,
     ){
         this.ws = new WebSocket(
             "ws://localhost:4000/realtime/"
@@ -55,13 +62,33 @@ export class RealtimeClient {
             if(message.event === REALTIME_EVENTS.transcript.final){
                 onTranscript(message.payload.text, true);
             }
+
+            if(
+
+        message.event ===
+        REALTIME_EVENTS
+            .ai
+            .token
+
+    ){
+
+        onAiToken(
+
+            message
+                .payload
+                .token,
+
+        );
+
+    }
+    
         };
 
         this.ws.onerror = (error) => {
             console.error("Websocket error:", error);
         };
 
-        this.ws.close = () => {
+        this.ws.onclose = () => {
             console.log("Websocket closed");
         };
     }
