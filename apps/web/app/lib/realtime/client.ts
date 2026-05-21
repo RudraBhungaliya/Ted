@@ -1,140 +1,107 @@
-import {
-    REALTIME_EVENTS,
-} from "./event.js";
+import { REALTIME_EVENTS } from "./event";
 
-import {
-    AudioEngine,
-} from "./audio.js";
+import { AudioEngine } from "./audio";
 
-type TranscriptHandler = (
-    text : string,
-    isFinal : boolean,
-) => void;
+type TranscriptHandler = (text: string, isFinal: boolean) => void;
 
-type AiTokenHandler = (
-
-    token : string,
-
-) => void;
+type AiTokenHandler = (token: string) => void;
 
 export class RealtimeClient {
-    private ws : 
-        WebSocket | null = null;
+  private ws: WebSocket | null = null;
 
-    private audioEngine =
-        new AudioEngine();
+  private audioEngine = new AudioEngine();
 
-    private chunkId = 0;
+  private chunkId = 0;
 
-    connect (
-        sessionId : string,
-        onTranscript : TranscriptHandler,
-        onAiToken : AiTokenHandler,
-    ){
-        this.ws = new WebSocket(
-            "ws://localhost:4000/realtime/"
-        );
+  connect(
+    sessionId: string,
+    onTranscript: TranscriptHandler,
+    onAiToken: AiTokenHandler,
+  ) {
+    this.ws = new WebSocket("ws://localhost:4000/realtime");
 
-        this.ws.onopen = () => {
-            console.log("Realtime connected");
+    this.ws.onopen = () => {
+      console.log("Realtime connected");
 
-            this.ws?.send(
-                JSON.stringify({
-                    event :
-                        REALTIME_EVENTS.session.start,
-                        payload : {
-                            sessionId,
-                        }
-                })
-            );
-        };
+      this.ws?.send(
+        JSON.stringify({
+          event: REALTIME_EVENTS.session.start,
+          payload: {
+            sessionId,
+          },
+        }),
+      );
+    };
 
-        this.ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
+    this.ws.onmessage = (event) => {
+      const message = JSON.parse(event.data);
 
-            if(message.event === REALTIME_EVENTS.transcript.partial){
-                onTranscript(
-                    message.payload.text,
-                    false,
-                );
-            }
+      if (message.event === REALTIME_EVENTS.transcript.partial) {
+        onTranscript(message.payload.text, false);
+      }
 
-            if(message.event === REALTIME_EVENTS.transcript.final){
-                onTranscript(message.payload.text, true);
-            }
+      if (message.event === REALTIME_EVENTS.transcript.final) {
+        onTranscript(message.payload.text, true);
+      }
 
-            if(
+      if (message.event === REALTIME_EVENTS.ai.token) {
+        onAiToken(message.payload.token);
+      }
+    };
 
-        message.event ===
-        REALTIME_EVENTS
-            .ai
-            .token
+    this.ws.onerror = (error) => {
+      console.error("Websocket error:", error);
+    };
 
-    ){
+    this.ws.onclose = (event) => {
+      console.log("WS CLOSED", {
+        code: event.code,
+        reason: event.reason,
+        clean: event.wasClean,
+      });
+    };
+  }
 
-        onAiToken(
+  async startStreaming(sessionId: string) {
+    await this.audioEngine.start((audio) => {
+      console.log("Audio callback fired");
 
-            message
-                .payload
-                .token,
+      if (!this.ws) {
+        console.log("WS missing");
 
-        );
+        return;
+      }
 
-    }
-    
-        };
+      console.log("WS state:", this.ws.readyState);
 
-        this.ws.onerror = (error) => {
-            console.error("Websocket error:", error);
-        };
+      if (this.ws.readyState !== WebSocket.OPEN) {
+        console.log("WS not open");
 
-        this.ws.onclose = () => {
-            console.log("Websocket closed");
-        };
-    }
+        return;
+      }
 
-    async startStreaming(
-        sessionId: string,
-    ) {
+      console.log("Sending chunk");
 
-        await this.audioEngine
-            .start(
-                (audio) => {
+      this.ws.send(
+        JSON.stringify({
+          event: REALTIME_EVENTS.audio.chunk,
 
-                    if (
-                        !this.ws ||
-                        this.ws.readyState !==
-                        WebSocket.OPEN
-                    ) {
-                        return;
-                    }
+          payload: {
+            sessionId,
+            chunkId: this.chunkId++,
+            audio,
+          },
+        }),
+      );
+    });
+  }
 
-                    this.ws.send(
-                        JSON.stringify({
-                            event:
-                                REALTIME_EVENTS
-                                    .audio
-                                    .chunk,
+  stopStreaming() {
+    this.audioEngine.stop();
+  }
 
-                            payload: {
-                                sessionId,
-                                chunkId:
-                                    this.chunkId++,
-                                audio,
-                            },
-                        })
-                    );
-                }
-            );
-    }
-
-
-    stopStreaming() {
-        this.audioEngine.stop();
-    }
-
-    disconnect() {
-        this.stopStreaming();
-        this.ws?.close();
-    }
+  disconnect() {
+    this.stopStreaming();
+    this.ws?.close();
+  }
 }

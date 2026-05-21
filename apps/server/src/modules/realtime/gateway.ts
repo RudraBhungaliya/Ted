@@ -4,24 +4,19 @@ import {
     redis
 } from "../../lib/redis.js";
 
-import fastifyWebsocket from "@fastify/websocket";
-
 import { REALTIME_EVENTS } from "./events.js";
 
 import { realtimeManager } from "./manager.js";
 
-import type { WebSocket } from "@fastify/websocket";
-
 export async function realtimeGateway(app: FastifyInstance) {
-  await app.register(fastifyWebsocket);
-
+  console.log("Realtime gateway registered");
   app.get(
     "/realtime",
     {
       websocket: true,
     },
-    (socket: WebSocket, req: any) => {
-      socket.on("message", async (rawMessage: string | Buffer) => {
+    (connection, req) => {
+      connection.socket.on("message", async (rawMessage: string | Buffer) => {
         try {
           const message = JSON.parse(rawMessage.toString());
 
@@ -29,9 +24,9 @@ export async function realtimeGateway(app: FastifyInstance) {
 
           if (event === REALTIME_EVENTS.session.start) {
             realtimeManager.createSession(payload.sessionId);
-            realtimeManager.attachSocket(payload.sessionId, socket);
+            realtimeManager.attachSocket(payload.sessionId, connection.socket);
 
-            socket.send(
+            connection.socket.send(
               JSON.stringify({
                 event: REALTIME_EVENTS.connection.connected,
                 payload: {
@@ -55,7 +50,7 @@ export async function realtimeGateway(app: FastifyInstance) {
             );
           }
         } catch (err) {
-          socket.send(
+          connection.socket.send(
             JSON.stringify({
               event: REALTIME_EVENTS.connection.error,
               payload: {
@@ -66,7 +61,7 @@ export async function realtimeGateway(app: FastifyInstance) {
         }
       });
 
-      socket.on("close", () => {
+      connection.socket.on("close", () => {
         console.log("Socket Disconnected");
       });
     },

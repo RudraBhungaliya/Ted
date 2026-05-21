@@ -1,62 +1,171 @@
-import { Deepgram } from "@deepgram/sdk";
-import { env } from "../../config/env.js";
-import { emitPartialTranscript, emitFinalTranscript } from "./transcript.js";
+import {
+    createClient,
+    LiveTranscriptionEvents,
+} from "@deepgram/sdk";
 
-const deepgram: any = new Deepgram({
-    apiKey: env.DEEPGRAM_API_KEY,
-});
+import {
+    env,
+} from "../../config/env.js";
 
-const connections = new Map<string, any>();
+import {
+    emitPartialTranscript,
+    emitFinalTranscript,
+} from "./transcript.js";
 
-export function initializeDeepgramSession(sessionId: string) {
-    if (connections.has(sessionId)) return;
+const deepgram =
+    createClient(
+        env.DEEPGRAM_API_KEY,
+    );
 
-    const connection = deepgram.listen.live({
-        model: "nova-2",
-        language: "en-US",
-        smart_format: true,
-        interim_results: true,
-        punctuate: true,
-        endpointing: 100,
-    });
+const connections =
+    new Map<string, any>();
 
-    connection.on("transcript.received", () => {
-        console.log("Deepgram connected");
-    });
+export function initializeDeepgramSession(
+    sessionId: string,
+) {
 
-    connection.on("transcript.partially_received", (data: any) => {
-        const text = data.channel?.alternatives?.[0]?.transcript;
+    if (
+        connections.has(
+            sessionId,
+        )
+    ) {
+        return;
+    }
 
-        if (!text) return;
+    const connection =
+        deepgram.listen.live({
 
-        const isFinal = data.is_final;
+            model: "nova-2",
 
-        if (isFinal) {
-            emitFinalTranscript(sessionId, text);
-            return;
-        }
+            language: "en-US",
 
-        emitPartialTranscript(sessionId, text);
-    });
+            smart_format: true,
 
-    connection.on("transcript.error", (error: any) => {
-        console.error("Deepgram Error", error);
-    });
+            interim_results: true,
 
-    connections.set(sessionId, connection);
+            punctuate: true,
+
+            endpointing: 100,
+
+        });
+
+    connection.on(
+        LiveTranscriptionEvents.Open,
+
+        () => {
+
+            console.log(
+                "Deepgram connected:",
+                sessionId,
+            );
+
+        },
+    );
+
+    connection.on(
+        LiveTranscriptionEvents.Transcript,
+
+        (data: any) => {
+
+            const text =
+                data.channel
+                    ?.alternatives?.[0]
+                    ?.transcript;
+
+            if (!text) {
+                return;
+            }
+
+            const isFinal =
+                data.is_final;
+
+            if (isFinal) {
+
+                emitFinalTranscript(
+                    sessionId,
+                    text,
+                );
+
+                return;
+
+            }
+
+            emitPartialTranscript(
+                sessionId,
+                text,
+            );
+
+        },
+    );
+
+    connection.on(
+        LiveTranscriptionEvents.Error,
+
+        (error: any) => {
+
+            console.error(
+                "Deepgram Error:",
+                error,
+            );
+
+        },
+    );
+
+    connection.on(
+        LiveTranscriptionEvents.Close,
+
+        () => {
+
+            console.log(
+                "Deepgram closed:",
+                sessionId,
+            );
+
+        },
+    );
+
+    connections.set(
+        sessionId,
+        connection,
+    );
+
 }
 
-export const sendAudioToDeepgram = (sessionId: string, audio: Buffer) => {
-    const connection = connections.get(sessionId);
-    if (!connection) return;
+export function sendAudioToDeepgram(
+    sessionId: string,
+    audio: Buffer,
+) {
+
+    const connection =
+        connections.get(
+            sessionId,
+        );
+
+    if (!connection) {
+        return;
+    }
 
     connection.send(audio);
-};
 
-export function closeDeepgramSession(sessionId: string) {
-    const connection = connections.get(sessionId);
-    if (!connection) return;
+}
+
+export function closeDeepgramSession(
+    sessionId: string,
+) {
+
+    const connection =
+        connections.get(
+            sessionId,
+        );
+
+    if (!connection) {
+        return;
+    }
 
     connection.finish();
-    connections.delete(sessionId);
+
+    connections.delete(
+        sessionId,
+    );
+
 }

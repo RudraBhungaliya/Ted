@@ -6,6 +6,7 @@ import { registerRoutes } from "./api/index.js";
 import "./types/fastify.js";
 import cookie from "@fastify/cookie";
 import { startRealtimeWorker } from "./modules/realtime/worker.js";
+import websocket from "@fastify/websocket";
 
 const app = Fastify({
   // fastapi instance
@@ -16,6 +17,8 @@ await app.register(cors, {
   origin: true,
   credentials: true,
 });
+
+await app.register(websocket);
 
 await app.register(cookie, {
   secret: env.JWT_SECRET,
