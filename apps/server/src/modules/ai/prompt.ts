@@ -1,4 +1,5 @@
 import type { ConversationTurn } from "./types.js";
+import { env } from "../../config/env.js";
 
 export function buildSystemPrompt() {
   return `
@@ -18,13 +19,16 @@ Rules:
 }
 
 export function buildMessages(turns: ConversationTurn[]) {
+  const maxTurns = Math.max(1, Number(env.AI_MAX_HISTORY_TURNS));
+  const recentTurns = turns.slice(-maxTurns);
+
   return [
     {
       role: "system",
       content: buildSystemPrompt(),
     },
 
-    ...turns.map((turn) => ({
+    ...recentTurns.map((turn) => ({
       role: turn.role,
 
       content: turn.text,

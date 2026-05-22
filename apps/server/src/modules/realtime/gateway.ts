@@ -44,8 +44,6 @@ export async function realtimeGateway(app: FastifyInstance) {
                   ? Buffer.from(new Uint8Array(rawMessage))
                   : Buffer.from(rawMessage as string);
 
-              console.log("Binary audio received", audio.length);
-
               sendAudioToDeepgram(activeSessionId, audio);
 
               return;

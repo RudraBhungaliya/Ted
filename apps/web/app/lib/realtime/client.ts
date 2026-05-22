@@ -5,6 +5,7 @@ import { REALTIME_EVENTS, type RealtimeInboundMessage } from "./event";
 type TranscriptHandler = (text: string, isFinal: boolean) => void;
 type AiTokenHandler = (token: string) => void;
 type StatusHandler = (message: string) => void;
+type ErrorHandler = (message: string) => void;
 
 export class RealtimeClient {
   private socket: WebSocket | null = null;
@@ -19,6 +20,7 @@ export class RealtimeClient {
     onAiStart: () => void,
     onAiEnd: () => void,
     onStatus?: StatusHandler,
+    onError?: ErrorHandler,
   ): Promise<void> {
     this.disconnect();
     this.sessionId = sessionId;
@@ -59,6 +61,7 @@ export class RealtimeClient {
             break;
           case REALTIME_EVENTS.connection.error:
             window.clearTimeout(connectionTimeout);
+            onError?.(inbound.payload?.message ?? "Realtime connection failed.");
             reject(
               new Error(inbound.payload?.message ?? "Realtime connection failed."),
             );
@@ -80,6 +83,11 @@ export class RealtimeClient {
           case REALTIME_EVENTS.ai.end:
             onAiEnd();
             onStatus?.("Listening");
+            break;
+          case REALTIME_EVENTS.ai.error:
+            onAiEnd();
+            onStatus?.("Error");
+            onError?.(inbound.payload?.message ?? "AI response failed.");
             break;
           case REALTIME_EVENTS.ai.interrupt:
             onAiEnd();
