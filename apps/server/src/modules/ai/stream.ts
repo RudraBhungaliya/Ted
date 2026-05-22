@@ -1,8 +1,14 @@
-import { buildMessages } from "./prompt.js";
+import {
+  buildMessages,
+} from "./prompt.js";
 
-import { streamGrokResponse } from "./providers/grok.js";
+import {
+  streamAiProvider,
+} from "./providers/index.js";
 
-import type { ConversationTurn } from "./types.js";
+import type {
+  ConversationTurn,
+} from "./types.js";
 
 import {
   startAiStream,
@@ -14,19 +20,50 @@ export async function streamAiResponse(
   sessionId: string,
   turns: ConversationTurn[],
 ) {
-  try {
-    startAiStream(sessionId);
 
-    await streamGrokResponse(
-      buildMessages(turns),
+  try {
+
+    console.log(
+      "AI RESPONSE START",
+    );
+
+    startAiStream(
+      sessionId,
+    );
+
+    await streamAiProvider(
+
+      buildMessages(
+        turns,
+      ),
 
       (token) => {
-        streamAiToken(sessionId, token);
+
+        console.log(
+          "TOKEN:",
+          token,
+        );
+
+        streamAiToken(
+          sessionId,
+          token,
+        );
       },
     );
 
-    endAiStream(sessionId);
+    console.log(
+      "AI RESPONSE END",
+    );
+
+    endAiStream(
+      sessionId,
+    );
+
   } catch (error) {
-    console.error("Error in streamAiResponse : ", error);
+
+    console.error(
+      "Error in streamAiResponse:",
+      error,
+    );
   }
 }

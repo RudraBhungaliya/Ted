@@ -15,6 +15,7 @@
     "@deepgram/sdk": "^3.13.0",
     "@fastify/cors": "^11.2.0",
     "@fastify/websocket": "^11.2.0",
+    "@google/generative-ai": "^0.24.1",
     "@prisma/client": "^7.8.0",
     "bcrypt": "^6.0.0",
     "dotenv": "^17.4.2",
