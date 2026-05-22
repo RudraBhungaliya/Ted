@@ -14,6 +14,7 @@ import {
   startAiStream,
   streamAiToken,
   endAiStream,
+  failAiStream,
 } from "../realtime/stream.js";
 
 export async function streamAiResponse(
@@ -22,11 +23,6 @@ export async function streamAiResponse(
 ) {
 
   try {
-
-    console.log(
-      "AI RESPONSE START",
-    );
-
     startAiStream(
       sessionId,
     );
@@ -38,21 +34,11 @@ export async function streamAiResponse(
       ),
 
       (token) => {
-
-        console.log(
-          "TOKEN:",
-          token,
-        );
-
         streamAiToken(
           sessionId,
           token,
         );
       },
-    );
-
-    console.log(
-      "AI RESPONSE END",
     );
 
     endAiStream(
@@ -64,6 +50,16 @@ export async function streamAiResponse(
     console.error(
       "Error in streamAiResponse:",
       error,
+    );
+
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : "AI response failed.";
+
+    failAiStream(
+      sessionId,
+      message,
     );
   }
 }

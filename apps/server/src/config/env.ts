@@ -52,6 +52,18 @@ const envSchema = z.object({
   DEEPGRAM_API_KEY:
     z.string(),
 
+  AI_RESPONSE_DEBOUNCE_MS:
+    z.string()
+      .default("120"),
+
+  DEEPGRAM_ENDPOINTING_MS:
+    z.string()
+      .default("160"),
+
+  AI_MAX_HISTORY_TURNS:
+    z.string()
+      .default("8"),
+
 });
 
 export const env =

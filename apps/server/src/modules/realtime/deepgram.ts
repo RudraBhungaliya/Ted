@@ -32,7 +32,7 @@ export function initializeDeepgramSession(sessionId: string) {
     smart_format: true,
     interim_results: true,
     punctuate: true,
-    endpointing: 300,
+    endpointing: Number(env.DEEPGRAM_ENDPOINTING_MS),
     encoding: "linear16",
     sample_rate: 16000,
   });
@@ -58,16 +58,16 @@ export function initializeDeepgramSession(sessionId: string) {
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
     const text = data.channel?.alternatives?.[0]?.transcript;
 
+    if (data.speech_final) {
+      void emitSpeechFinal(sessionId);
+    }
+
     if (!text) {
       return;
     }
 
     if (data.is_final) {
       emitFinalTranscript(sessionId, text);
-
-      if (data.speech_final) {
-        void emitSpeechFinal(sessionId);
-      }
 
       return;
     }
@@ -82,6 +82,10 @@ export function initializeDeepgramSession(sessionId: string) {
   connection.on(LiveTranscriptionEvents.Close, () => {
     console.log("Deepgram closed:", sessionId);
     sessionState.isOpen = false;
+  });
+
+  connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
+    void emitSpeechFinal(sessionId);
   });
 
   connections.set(sessionId, sessionState);

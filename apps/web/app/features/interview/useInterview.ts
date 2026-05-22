@@ -43,6 +43,7 @@ async function startInterview() {
       () => {
         useInterviewStore.getState().setAiResponding(true);
         useInterviewStore.getState().clearAiResponse();
+        useInterviewStore.getState().setError(null);
       },
 
       () => {
@@ -51,6 +52,10 @@ async function startInterview() {
 
       (status) => {
         useInterviewStore.getState().setStatus(status);
+      },
+
+      (message) => {
+        useInterviewStore.getState().setError(message);
       },
     );
 

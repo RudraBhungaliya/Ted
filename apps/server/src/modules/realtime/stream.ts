@@ -92,3 +92,24 @@ export function endAiStream(
         })
     );
 }
+
+export function failAiStream(
+    sessionId : string,
+    message = "AI response failed.",
+){
+    realtimeManager.setAiStreaming(sessionId, false);
+
+    const socket = realtimeManager.getSocket(sessionId);
+
+    if(!socket) return;
+
+    socket.send(
+        JSON.stringify({
+            event : REALTIME_EVENTS.ai.error,
+            payload : {
+                sessionId,
+                message,
+            },
+        })
+    );
+}

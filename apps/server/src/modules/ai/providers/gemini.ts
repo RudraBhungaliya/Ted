@@ -1,64 +1,35 @@
-import {
-  GoogleGenerativeAI,
-} from "@google/generative-ai";
-
+import { GoogleGenAI } from "@google/genai";
+import type { StreamTokenHandler } from "../types.js";
+// Import your parsed env object from your schema path
 import { env } from "../../../config/env.js";
 
-import type {
-  StreamTokenHandler,
-} from "../types.js";
-
-const genAI =
-  new GoogleGenerativeAI(
-    env.GEMINI_API_KEY,
-  );
-
-const model =
-  genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
-  });
+// Explicitly pass the key so there is zero guesswork for the SDK
+const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
 
 export async function streamGeminiResponse(
   messages: any[],
   onToken: StreamTokenHandler,
 ) {
+  try {
+    // Format incoming generic chat history format into Gemini content blocks
+    const formattedMessages = messages.map(msg => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content || msg.text || "" }]
+    }));
 
-  const prompt =
-    messages
-      .map(
-        (m) =>
-          `${m.role}: ${m.content}`,
-      )
-      .join("\n");
+    const responseStream = await ai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents: formattedMessages,
+    });
 
-  console.log(
-    "PROMPT:",
-    prompt,
-  );
-
-  const result =
-    await model.generateContentStream(
-      prompt,
-    );
-
-  for await (
-    const chunk
-    of result.stream
-  ) {
-
-    const text =
-      chunk.text();
-
-    if (!text)
-      continue;
-
-    console.log(
-      "TOKEN:",
-      text,
-    );
-
-    onToken(
-      text,
-    );
+    for await (const chunk of responseStream) {
+      const token = chunk.text;
+      if (token) {
+        onToken(token);
+      }
+    }
+  } catch (error) {
+    console.error("Gemini Engine Stream Error:", error);
+    throw error;
   }
 }

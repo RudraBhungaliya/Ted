@@ -30,6 +30,8 @@ export const REALTIME_EVENTS = {
             "ai.start",
         end : 
             "ai.end",
+        error :
+            "ai.error",
         interrupt :
             "ai.interupt",
         token : 
