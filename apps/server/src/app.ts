@@ -1,24 +1,31 @@
 import Fastify from "fastify";
+
 import cors from "@fastify/cors";
-import { env } from "./config/env.js";
-import { logger } from "./config/logger.js";
-import { registerRoutes } from "./api/index.js";
-import "./types/fastify.js";
-import cookie from "@fastify/cookie";
-import { startRealtimeWorker } from "./modules/realtime/worker.js";
+
 import websocket from "@fastify/websocket";
 
+import cookie from "@fastify/cookie";
+
+import { env } from "./config/env.js";
+
+import { logger } from "./config/logger.js";
+
+import { registerRoutes } from "./api/index.js";
+
+import "./types/fastify.js";
+
+import { startRealtimeWorker } from "./modules/realtime/worker.js";
+
 const app = Fastify({
-  // fastapi instance
   logger: false,
 });
+
+await app.register(websocket);
 
 await app.register(cors, {
   origin: true,
   credentials: true,
 });
-
-await app.register(websocket);
 
 await app.register(cookie, {
   secret: env.JWT_SECRET,
@@ -34,7 +41,6 @@ const start = async () => {
 
     await app.listen({
       port: Number(env.PORT),
-
       host: "0.0.0.0",
     });
 

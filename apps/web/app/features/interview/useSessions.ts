@@ -29,7 +29,9 @@ export const useSessions = () => {
     };
 
     useEffect(() => {
-        loadSessions();
+        queueMicrotask(() => {
+            loadSessions();
+        });
 
         const handleSessionStopped = () => {
             loadSessions();

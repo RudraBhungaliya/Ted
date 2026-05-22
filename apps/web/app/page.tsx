@@ -27,6 +27,10 @@ export default function Home() {
 
   const isConnected = useInterviewStore((s) => s.isConnected);
 
+  const isAiResponding = useInterviewStore((s) => s.isAiResponding);
+  const status = useInterviewStore((s) => s.status);
+  const error = useInterviewStore((s) => s.error);
+
   const { groupedSessions, isLoading } = useSessions();
 
   return (
@@ -71,13 +75,13 @@ export default function Home() {
               "
             >
               <span>
-                What's new in{" "}
+                Low-latency mode for{" "}
                 <strong
                   className="
                     text-indigo-900
                   "
                 >
-                  Reflex v0.1
+                  Ted
                 </strong>
               </span>
 
@@ -155,7 +159,7 @@ export default function Home() {
                       tracking-tight
                     "
                   >
-                    Reflex
+                    Ted
                   </h1>
                 </div>
 
@@ -295,7 +299,7 @@ export default function Home() {
                       z-10
                     "
                   >
-                    Start Reflex
+                    Start Ted
                   </span>
                 </button>
               </div>
@@ -326,21 +330,7 @@ export default function Home() {
                   animate-pulse
                 "
               />
-              Ready to begin.
-              <a
-                href="#"
-                className="
-                  font-semibold
-                  hover:text-blue-600
-                  transition-colors
-                  underline
-                  decoration-blue-300
-                  underline-offset-4
-                "
-              >
-                Connect your calendar
-              </a>
-              to import upcoming interviews.
+              {error ?? "Ready for realtime microphone questions and instant text answers."}
             </div>
 
             <div
@@ -564,7 +554,7 @@ export default function Home() {
                 text-green-400
               "
             >
-              {isConnected ? "Connected" : "Disconnected"}
+              {isConnected ? (isAiResponding ? "AI Responding" : status) : "Disconnected"}
             </div>
           </div>
 

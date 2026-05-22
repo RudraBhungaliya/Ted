@@ -14,7 +14,7 @@ class ConnectionManager :
         if session_id in self.connections :
             del self.connections[session_id]
             
-        if session_id in self.trancscripts :
+        if session_id in self.transcripts :
             del self.transcripts[session_id]
         
     async def send_json(self, session_id : str, data : dict) :

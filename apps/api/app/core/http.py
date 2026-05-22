@@ -2,7 +2,7 @@ import httpx
 from app.core.logging import logger
 
 class HTTPClientManager :
-    def _init_(self) :
+    def __init__(self) :
         self.client : httpx.AsyncClient | None = None
         
     async def connect(self) :
@@ -19,7 +19,7 @@ class HTTPClientManager :
     async def disconnect(self) :
         if self.client :
             logger.info("Closing HTTP client connection...")
-            await self.connect.aclose()
+            await self.client.aclose()
     
     def get_client(self) -> httpx.AsyncClient :
         if not self.client :

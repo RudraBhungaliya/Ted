@@ -2,15 +2,15 @@ from app.core.http import http_manager
 from app.core.logging import logger
 from app.core.settings import settings
 
-from app.services.ai.providers.base import BaseSTTProvider
+from app.services.audio.providers.base import BaseAudioProvider
 
-class DeepgramProvider(BaseSTTProvider) :
+class DeepgramProvider(BaseAudioProvider) :
     
     BASE_URL = (
-        "https://api.deepgram.com.v1/listen"
+        "https://api.deepgram.com/v1/listen"
     )
     
-    async def transcibe(
+    async def transcribe(
         self,
         audio_chunk : bytes
     ) -> str :

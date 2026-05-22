@@ -7,12 +7,12 @@ import { useInterview } from "../features/interview/useInterview";
 import { useInterviewStore } from "../features/interview/store";
 
 export default function Overlay() {
-  const { handleStart, handleStop } = useInterview();
+  const { handleStop } = useInterview();
 
   const isRecording = useInterviewStore((s) => s.isRecording);
 
   return (
-    <FloatingPanel onStart={handleStart} onStop={handleStop}>
+    <FloatingPanel onStart={() => {}} onStop={handleStop}>
       <div
         className="
                     h-full

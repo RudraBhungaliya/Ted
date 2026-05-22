@@ -7,6 +7,9 @@ type InterviewState = {
   partialTranscript: string;
   finalTranscript: string;
   aiResponse: string;
+  isAiResponding: boolean;
+  status: string;
+  error: string | null;
 
   start: (sessionId: string) => void;
 
@@ -18,7 +21,17 @@ type InterviewState = {
 
   appendFinalTranscript: (text: string) => void;
 
+  setFinalTranscript: (text: string) => void;
+
   appendAiToken: (token: string) => void;
+
+  setAiResponding: (responding: boolean) => void;
+
+  clearAiResponse: () => void;
+
+  setStatus: (status: string) => void;
+
+  setError: (error: string | null) => void;
 
   clear: () => void;
 };
@@ -30,6 +43,9 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   partialTranscript: "",
   finalTranscript: "",
   aiResponse: "",
+  isAiResponding: false,
+  status: "Idle",
+  error: null,
 
   start: (sessionId: string) =>
     set({
@@ -38,11 +54,16 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       partialTranscript: "",
       finalTranscript: "",
       aiResponse: "",
+      isAiResponding: false,
+      status: "Connecting",
+      error: null,
     }),
 
   stop: () =>
     set({
       isRecording: false,
+      isAiResponding: false,
+      status: "Idle",
     }),
 
   setConnected: (connected: boolean) =>
@@ -57,14 +78,42 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
   appendFinalTranscript: (text: string) =>
     set((state) => ({
-      finalTranscript: state.finalTranscript + " " + text,
+      finalTranscript: state.finalTranscript
+        ? `${state.finalTranscript} ${text}`.trim()
+        : text,
       partialTranscript: "",
     })),
+
+  setFinalTranscript: (text: string) =>
+    set({
+      finalTranscript: text,
+      partialTranscript: "",
+    }),
 
   appendAiToken: (token) =>
     set((state) => ({
       aiResponse: state.aiResponse + token,
     })),
+
+  setAiResponding: (responding) =>
+    set({
+      isAiResponding: responding,
+    }),
+
+  clearAiResponse: () =>
+    set({
+      aiResponse: "",
+    }),
+
+  setStatus: (status) =>
+    set({
+      status,
+    }),
+
+  setError: (error) =>
+    set({
+      error,
+    }),
 
   clear: () =>
     set({
@@ -73,5 +122,9 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       finalTranscript: "",
 
       aiResponse: "",
+
+      isAiResponding: false,
+
+      error: null,
     }),
 }));

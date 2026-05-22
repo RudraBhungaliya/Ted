@@ -3,8 +3,7 @@ from fastapi import WebSocket
 from fastapi import WebSocketDisconnect
 
 from app.services.realtime.manager import manager
-from app.services.audio.stt import stt_provider
-from app.services.audio.stt import BaseSTTProvider
+from app.services.audio.stt import stt_service
 from app.services.interview.pipeline import run_pipeline
 
 router = APIRouter()
@@ -23,7 +22,7 @@ async def audio_ws(
     try :
         while True :
             audio_chunk = await websocket.receive_bytes()
-            transcript = await stt_provider.transcribe(audio_chunk)
+            transcript = await stt_service.transcribe(audio_chunk)
             
             if transcript.strip():
                 manager.append_transcript(session_id, transcript,)
@@ -36,7 +35,7 @@ async def audio_ws(
                     }
                 )
                 
-                full_query = manager.get_full_transcription(session_id)
+                full_query = manager.get_full_transcript(session_id)
                 
                 response = ""
                 

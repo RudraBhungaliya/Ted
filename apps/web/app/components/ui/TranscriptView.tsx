@@ -8,26 +8,43 @@ export default function TranscriptView() {
 
   const partialTranscript = useInterviewStore((s) => s.partialTranscript);
 
-  const streamData = [
-    ...finalTranscript,
+  const aiResponse = useInterviewStore((s) => s.aiResponse);
 
-    ...(partialTranscript ? [partialTranscript] : []),
-  ];
+  const hasContent = finalTranscript || partialTranscript || aiResponse;
 
-  if (streamData.length === 0) {
+  if (!hasContent) {
     return <TranscriptEmptyState />;
   }
 
   return (
-    <div className="flex flex-col gap-1 text-sm">
-      {streamData.map((c: string, i: number) => (
-        <div
-          key={`${i}-${c.slice(0, 16)}`}
-          className="whitespace-pre-wrap break-words"
-        >
-          {c}
+    <div className="flex flex-col gap-3 text-sm">
+      {/* Transcript section */}
+      {(finalTranscript || partialTranscript) && (
+        <div>
+          {finalTranscript && (
+            <div className="whitespace-pre-wrap break-words text-zinc-800">
+              {finalTranscript}
+            </div>
+          )}
+          {partialTranscript && (
+            <div className="whitespace-pre-wrap break-words text-zinc-400 italic">
+              {partialTranscript}
+            </div>
+          )}
         </div>
-      ))}
+      )}
+
+      {/* AI Response section */}
+      {aiResponse && (
+        <div className="mt-2 pt-2 border-t border-zinc-200/60">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 mb-1">
+            AI Response
+          </div>
+          <div className="whitespace-pre-wrap break-words text-zinc-700 leading-relaxed">
+            {aiResponse}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

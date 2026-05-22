@@ -3,7 +3,7 @@ import { createSSE } from "./sse";
 import { useInterviewStore } from "../interview/store";
 
 export const useStream = (url: string, enabled: boolean) => {
-  const addChunk = useInterviewStore((s) => s.addChunk);
+  const appendAiToken = useInterviewStore((s) => s.appendAiToken);
   const esRef = useRef<EventSource | null>(null);
   const retryRef = useRef(0);
 
@@ -27,14 +27,14 @@ export const useStream = (url: string, enabled: boolean) => {
         if (!isActive) return;
 
         if (typeof data === "string") {
-          addChunk(data);
+          appendAiToken(data);
         } else if (
           typeof data === "object" &&
           data !== null &&
           "text" in data &&
           typeof data.text === "string"
         ) {
-          addChunk(data.text);
+          appendAiToken(data.text);
         }
       });
 
@@ -63,5 +63,5 @@ export const useStream = (url: string, enabled: boolean) => {
       retryRef.current = 0;
       cleanup();
     };
-  }, [url, enabled, addChunk]);
+  }, [url, enabled, appendAiToken]);
 };

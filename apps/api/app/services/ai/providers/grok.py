@@ -7,11 +7,11 @@ from app.services.ai.providers.base import BaseLLMProvider
 class GrokProvider(BaseLLMProvider) :
     BASE_URL = "https://api.x.ai/v1/chat/completions"
     
-    async def generate_reponse(
+    async def generate_response(
         self,
         prompt : str,
         system_prompt : str | None = None,
-        system : float = 0.7,
+        temperature : float = 0.7,
     ) -> str :
         
         client = http_manager.get_client()
@@ -29,7 +29,7 @@ class GrokProvider(BaseLLMProvider) :
         })
         
         payload = {
-            "model" : settings.grok_model,
+            "model" : "grok-3-mini",
             "messages" : messages,
             "temperature" : temperature
         }
