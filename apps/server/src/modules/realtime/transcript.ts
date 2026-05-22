@@ -1,13 +1,13 @@
 import { realtimeManager } from "./manager.js";
-
 import { REALTIME_EVENTS } from "./events.js";
-
 import { streamAiResponse } from "../ai/stream.js";
+import { interruptAiStream } from "./stream.js";
 
-import type { ConversationTurn } from "../ai/types.js";
-
-export async function emitPartialTranscript(sessionId: string, text: string) {
-  realtimeManager.appendTranscript(sessionId, text);
+export function emitPartialTranscript(sessionId: string, text: string) {
+  if (realtimeManager.isAiStreaming(sessionId)) {
+    interruptAiStream(sessionId);
+    realtimeManager.setAiStreaming(sessionId, false);
+  }
 
   const socket = realtimeManager.getSocket(sessionId);
 
@@ -24,8 +24,8 @@ export async function emitPartialTranscript(sessionId: string, text: string) {
   );
 }
 
-export async function emitFinalTranscript(sessionId: string, text: string) {
-  realtimeManager.appendTranscript(sessionId, text);
+export function emitFinalTranscript(sessionId: string, text: string) {
+  realtimeManager.appendFinalSegment(sessionId, text);
 
   const socket = realtimeManager.getSocket(sessionId);
 
@@ -36,27 +36,19 @@ export async function emitFinalTranscript(sessionId: string, text: string) {
       event: REALTIME_EVENTS.transcript.final,
       payload: {
         sessionId,
-        text,
+        text: realtimeManager.getLatestUserTurn(sessionId),
       },
     }),
   );
-  const fullTranscript = realtimeManager.getFullTranscript(sessionId);
-  
-  const turns: ConversationTurn[] = [
-    {
-      role: "user",
-  
-      text: fullTranscript,
-  
-      timestamp: Date.now(),
-    },
-  ];
-  
-  console.log("Starting AI stream...");
-  
-  await streamAiResponse(
-    sessionId,
-    turns,
-  );
 }
 
+export async function emitSpeechFinal(sessionId: string) {
+  const committed = realtimeManager.commitUserTurn(sessionId);
+
+  if (!committed.trim()) {
+    return;
+  }
+
+  const turns = realtimeManager.getTurns(sessionId);
+  await streamAiResponse(sessionId, turns);
+}

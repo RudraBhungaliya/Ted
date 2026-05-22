@@ -9,6 +9,8 @@ import {
 export function startAiStream(
     sessionId : string,
 ){
+    realtimeManager.setAiStreaming(sessionId, true);
+
     const socket = realtimeManager.getSocket(sessionId);
 
     if(!socket) return;
@@ -27,7 +29,7 @@ export function streamAiToken(
     sessionId : string,
     token : string,
 ){
-    realtimeManager.appendAiResponse(
+    realtimeManager.appendAiToken(
         sessionId,
         token,
     );
@@ -74,6 +76,9 @@ export function interruptAiStream(
 export function endAiStream(
     sessionId : string,
 ){
+    realtimeManager.setAiStreaming(sessionId, false);
+    realtimeManager.finalizeAiTurn(sessionId);
+
     const socket = realtimeManager.getSocket(sessionId);
 
     if(!socket) return;

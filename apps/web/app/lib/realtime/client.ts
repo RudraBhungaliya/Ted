@@ -1,107 +1,152 @@
-import { REALTIME_EVENTS } from "./event";
-
+import { REALTIME_CONFIG } from "../constants";
 import { AudioEngine } from "./audio";
+import { REALTIME_EVENTS, type RealtimeInboundMessage } from "./event";
 
 type TranscriptHandler = (text: string, isFinal: boolean) => void;
-
 type AiTokenHandler = (token: string) => void;
+type StatusHandler = (message: string) => void;
 
 export class RealtimeClient {
-  private ws: WebSocket | null = null;
-
+  private socket: WebSocket | null = null;
   private audioEngine = new AudioEngine();
+  private sessionId: string | null = null;
+  private streaming = false;
 
-  private chunkId = 0;
-
-  connect(
+  async connect(
     sessionId: string,
     onTranscript: TranscriptHandler,
     onAiToken: AiTokenHandler,
-  ) {
-    this.ws = new WebSocket("ws://localhost:4000/realtime");
+    onAiStart: () => void,
+    onAiEnd: () => void,
+    onStatus?: StatusHandler,
+  ): Promise<void> {
+    this.disconnect();
+    this.sessionId = sessionId;
 
-    this.ws.onopen = () => {
-      console.log("Realtime connected");
+    await new Promise<void>((resolve, reject) => {
+      const socket = new WebSocket(REALTIME_CONFIG.WS_URL);
+      this.socket = socket;
+      socket.binaryType = "arraybuffer";
 
-      this.ws?.send(
-        JSON.stringify({
-          event: REALTIME_EVENTS.session.start,
-          payload: {
-            sessionId,
-          },
-        }),
-      );
-    };
+      const connectionTimeout = window.setTimeout(() => {
+        if (socket.readyState !== WebSocket.OPEN) {
+          reject(new Error("Realtime WebSocket connection timed out."));
+          socket.close();
+        }
+      }, 8000);
 
-    this.ws.onmessage = (event) => {
-      const message = JSON.parse(event.data);
+      socket.onopen = () => {
+        socket.send(
+          JSON.stringify({
+            event: REALTIME_EVENTS.session.start,
+            payload: { sessionId },
+          }),
+        );
+      };
 
-      if (message.event === REALTIME_EVENTS.transcript.partial) {
-        onTranscript(message.payload.text, false);
-      }
+      socket.onmessage = (message) => {
+        if (message.data instanceof ArrayBuffer) {
+          return;
+        }
 
-      if (message.event === REALTIME_EVENTS.transcript.final) {
-        onTranscript(message.payload.text, true);
-      }
+        const inbound = JSON.parse(message.data as string) as RealtimeInboundMessage;
 
-      if (message.event === REALTIME_EVENTS.ai.token) {
-        onAiToken(message.payload.token);
-      }
-    };
+        switch (inbound.event) {
+          case REALTIME_EVENTS.connection.connected:
+            window.clearTimeout(connectionTimeout);
+            onStatus?.("Listening");
+            resolve();
+            break;
+          case REALTIME_EVENTS.connection.error:
+            window.clearTimeout(connectionTimeout);
+            reject(
+              new Error(inbound.payload?.message ?? "Realtime connection failed."),
+            );
+            break;
+          case REALTIME_EVENTS.transcript.partial:
+            onTranscript(inbound.payload?.text ?? "", false);
+            break;
+          case REALTIME_EVENTS.transcript.final:
+            onTranscript(inbound.payload?.text ?? "", true);
+            onStatus?.("Thinking");
+            break;
+          case REALTIME_EVENTS.ai.start:
+            onAiStart();
+            onStatus?.("Answering");
+            break;
+          case REALTIME_EVENTS.ai.token:
+            onAiToken(inbound.payload?.token ?? "");
+            break;
+          case REALTIME_EVENTS.ai.end:
+            onAiEnd();
+            onStatus?.("Listening");
+            break;
+          case REALTIME_EVENTS.ai.interrupt:
+            onAiEnd();
+            onStatus?.("Listening");
+            break;
+        }
+      };
 
-    this.ws.onerror = (error) => {
-      console.error("Websocket error:", error);
-    };
+      socket.onerror = () => {
+        window.clearTimeout(connectionTimeout);
+        reject(new Error("Realtime WebSocket failed."));
+      };
 
-    this.ws.onclose = (event) => {
-      console.log("WS CLOSED", {
-        code: event.code,
-        reason: event.reason,
-        clean: event.wasClean,
-      });
-    };
-  }
-
-  async startStreaming(sessionId: string) {
-    await this.audioEngine.start((audio) => {
-      console.log("Audio callback fired");
-
-      if (!this.ws) {
-        console.log("WS missing");
-
-        return;
-      }
-
-      console.log("WS state:", this.ws.readyState);
-
-      if (this.ws.readyState !== WebSocket.OPEN) {
-        console.log("WS not open");
-
-        return;
-      }
-
-      console.log("Sending chunk");
-
-      this.ws.send(
-        JSON.stringify({
-          event: REALTIME_EVENTS.audio.chunk,
-
-          payload: {
-            sessionId,
-            chunkId: this.chunkId++,
-            audio,
-          },
-        }),
-      );
+      socket.onclose = () => {
+        onStatus?.("Disconnected");
+        onAiEnd();
+      };
     });
   }
 
-  stopStreaming() {
+  async startStreaming(): Promise<void> {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      throw new Error("Realtime socket is not connected.");
+    }
+
+    if (this.streaming) {
+      return;
+    }
+
+    this.streaming = true;
+
+    await this.audioEngine.start((chunk) => {
+      if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
+      this.socket.send(chunk.buffer);
+    });
+  }
+
+  stopStreaming(): void {
+    if (!this.streaming) {
+      return;
+    }
+
+    this.streaming = false;
     this.audioEngine.stop();
   }
 
-  disconnect() {
+  disconnect(): void {
     this.stopStreaming();
-    this.ws?.close();
+
+    if (this.socket && this.sessionId) {
+      try {
+        this.socket.send(
+          JSON.stringify({
+            event: REALTIME_EVENTS.session.end,
+            payload: { sessionId: this.sessionId },
+          }),
+        );
+      } catch {
+        // Socket may already be closed.
+      }
+    }
+
+    this.socket?.close();
+    this.socket = null;
+    this.sessionId = null;
   }
 }

@@ -1,32 +1,51 @@
 import { FastifyInstance } from "fastify";
 
-import {
-    redis
-} from "../../lib/redis.js";
-
 import { REALTIME_EVENTS } from "./events.js";
-
 import { realtimeManager } from "./manager.js";
+import {
+  closeDeepgramSession,
+  initializeDeepgramSession,
+  sendAudioToDeepgram,
+} from "./deepgram.js";
 
 export async function realtimeGateway(app: FastifyInstance) {
   console.log("Realtime gateway registered");
+
   app.get(
     "/realtime",
     {
       websocket: true,
     },
-    (connection, req) => {
-      connection.socket.on("message", async (rawMessage: string | Buffer) => {
-        try {
-          const message = JSON.parse(rawMessage.toString());
+    (socket) => {
+      let activeSessionId: string | null = null;
 
+      socket.on("message", async (rawMessage: Buffer | ArrayBuffer | string, isBinary: boolean) => {
+        try {
+          if (isBinary) {
+            if (!activeSessionId) {
+              return;
+            }
+
+            const audio = Buffer.isBuffer(rawMessage)
+              ? rawMessage
+              : rawMessage instanceof ArrayBuffer
+                ? Buffer.from(new Uint8Array(rawMessage))
+                : Buffer.from(rawMessage as string);
+
+            sendAudioToDeepgram(activeSessionId, audio);
+            return;
+          }
+
+          const message = JSON.parse(rawMessage.toString());
           const { event, payload } = message;
 
           if (event === REALTIME_EVENTS.session.start) {
+            activeSessionId = payload.sessionId;
             realtimeManager.createSession(payload.sessionId);
-            realtimeManager.attachSocket(payload.sessionId, connection.socket);
+            realtimeManager.attachSocket(payload.sessionId, socket as any);
+            initializeDeepgramSession(payload.sessionId);
 
-            connection.socket.send(
+            socket.send(
               JSON.stringify({
                 event: REALTIME_EVENTS.connection.connected,
                 payload: {
@@ -36,33 +55,28 @@ export async function realtimeGateway(app: FastifyInstance) {
             );
           }
 
-          if (event === REALTIME_EVENTS.audio.chunk) {
-            console.log("Audio chunk received");
-
-            await redis.publish(
-              "realtime:audio",
-
-              JSON.stringify({
-                sessionId: payload.sessionId,
-
-                audio: payload.audio,
-              }),
-            );
+          if (event === REALTIME_EVENTS.session.end && activeSessionId) {
+            closeDeepgramSession(activeSessionId);
+            realtimeManager.removeSession(activeSessionId);
+            activeSessionId = null;
           }
-        } catch (err) {
-          connection.socket.send(
+        } catch {
+          socket.send(
             JSON.stringify({
               event: REALTIME_EVENTS.connection.error,
               payload: {
-                message: "Invalid Message",
+                message: "Invalid message",
               },
             }),
           );
         }
       });
 
-      connection.socket.on("close", () => {
-        console.log("Socket Disconnected");
+      socket.on("close", () => {
+        if (activeSessionId) {
+          closeDeepgramSession(activeSessionId);
+          realtimeManager.removeSession(activeSessionId);
+        }
       });
     },
   );

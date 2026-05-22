@@ -1,3 +1,5 @@
+import type { ConversationTurn } from "../ai/types.js";
+
 export type ConnectionPayload = {
     sessionId : string;
 };
@@ -24,8 +26,10 @@ export type AiEndPayload = {
 
 export type SessionState = {
     sessionId : string;
-    transcript : string[];
-    aiResponse : string[];
+    turns: ConversationTurn[];
+    currentAiTokens: string[];
+    pendingUserText: string;
+    aiStreaming: boolean;
     connected : boolean;
 };
 

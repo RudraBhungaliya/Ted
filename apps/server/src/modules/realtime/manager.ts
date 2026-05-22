@@ -1,5 +1,6 @@
 import { WebSocket } from "ws";
 import { SessionState } from "./types.js";
+import type { ConversationTurn } from "../ai/types.js";
 
 class RealtimeManager {
     private sessions = 
@@ -19,11 +20,72 @@ class RealtimeManager {
             sessionId,
             {
                 sessionId,
-                transcript : [],
-                aiResponse : [],
+                turns : [],
+                currentAiTokens : [],
+                pendingUserText: "",
+                aiStreaming: false,
                 connected : true,
             }
         )
+    }
+
+    appendFinalSegment(
+        sessionId: string,
+        text: string,
+    ) {
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+
+        session.pendingUserText = session.pendingUserText
+            ? `${session.pendingUserText} ${text}`.trim()
+            : text.trim();
+    }
+
+    commitUserTurn(
+        sessionId: string,
+    ): string {
+        const session = this.sessions.get(sessionId);
+        if (!session || !session.pendingUserText.trim()) {
+            return "";
+        }
+
+        const text = session.pendingUserText.trim();
+        session.turns.push({
+            role: "user",
+            text,
+            timestamp: Date.now(),
+        });
+        session.pendingUserText = "";
+        return text;
+    }
+
+    getLatestUserTurn(
+        sessionId: string,
+    ): string {
+        const session = this.sessions.get(sessionId);
+        if (!session) return "";
+
+        if (session.pendingUserText.trim()) {
+            return session.pendingUserText;
+        }
+
+        const userTurns = session.turns.filter((turn) => turn.role === "user");
+        return userTurns[userTurns.length - 1]?.text ?? "";
+    }
+
+    setAiStreaming(
+        sessionId: string,
+        streaming: boolean,
+    ) {
+        const session = this.sessions.get(sessionId);
+        if (!session) return;
+        session.aiStreaming = streaming;
+    }
+
+    isAiStreaming(
+        sessionId: string,
+    ): boolean {
+        return this.sessions.get(sessionId)?.aiStreaming ?? false;
     }
 
     removeSession(
@@ -52,24 +114,53 @@ class RealtimeManager {
         return this.sockets.get(sessionId);
     }
 
-    appendTranscript(
+    appendUserTurn(
         sessionId : string,
         text : string,
     ){
         const session = this.sessions.get(sessionId);
         if(!session) return;
 
-        session.transcript.push(text);
+        session.turns.push({
+            role: "user",
+            text: text.trim(),
+            timestamp: Date.now()
+        });
     }
 
-    appendAiResponse(
+    appendAiToken(
         sessionId : string,
         token : string,
     ){
         const session = this.sessions.get(sessionId);
         if(!session) return;
 
-        session.aiResponse.push(token);
+        session.currentAiTokens.push(token);
+    }
+
+    finalizeAiTurn(
+        sessionId : string,
+    ): string {
+        const session = this.sessions.get(sessionId);
+        if(!session) return "";
+
+        const fullResponse = session.currentAiTokens.join("");
+        if (fullResponse.trim()) {
+            session.turns.push({
+                role: "assistant",
+                text: fullResponse.trim(),
+                timestamp: Date.now()
+            });
+        }
+        session.currentAiTokens = [];
+        return fullResponse;
+    }
+
+    getTurns(
+        sessionId : string,
+    ): ConversationTurn[] {
+        const session = this.sessions.get(sessionId);
+        return session ? session.turns : [];
     }
 
     getFullTranscript(
@@ -79,7 +170,10 @@ class RealtimeManager {
 
         if(!session) return "";
 
-        return session.transcript.join(" ");
+        return session.turns
+            .filter(t => t.role === "user")
+            .map(t => t.text)
+            .join(" ");
     }
 
     getFullAiResponse(
@@ -89,7 +183,10 @@ class RealtimeManager {
 
         if(!session) return "";
 
-        return session.aiResponse.join(" ");
+        return session.turns
+            .filter(t => t.role === "assistant")
+            .map(t => t.text)
+            .join(" ");
     }
 }
 

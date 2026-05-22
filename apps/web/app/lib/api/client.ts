@@ -1,5 +1,5 @@
 // API client factory with centralized configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
 export class ApiClient {
   private baseUrl: string;
@@ -41,21 +41,21 @@ export class ApiClient {
     return this.request<T>(endpoint, { method: "GET" });
   }
 
-  post<T>(endpoint: string, data?: any) {
+  post<T>(endpoint: string, data?: unknown) {
     return this.request<T>(endpoint, {
       method: "POST",
       body: JSON.stringify(data),
     });
   }
 
-  put<T>(endpoint: string, data?: any) {
+  put<T>(endpoint: string, data?: unknown) {
     return this.request<T>(endpoint, {
       method: "PUT",
       body: JSON.stringify(data),
     });
   }
 
-  patch<T>(endpoint: string, data?: any) {
+  patch<T>(endpoint: string, data?: unknown) {
     return this.request<T>(endpoint, {
       method: "PATCH",
       body: JSON.stringify(data),
