@@ -128,3 +128,40 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       error: null,
     }),
 }));
+
+if (typeof window !== "undefined") {
+  const channel = new BroadcastChannel("ted_channel");
+  const tabId = Math.random().toString(36).substring(2, 9);
+  let isIncomingSync = false;
+
+  // Listen for updates from other tabs
+  channel.onmessage = (event) => {
+    const { type, payload, senderId } = event.data;
+    if (type === "SYNC_STATE" && senderId !== tabId) {
+      isIncomingSync = true;
+      useInterviewStore.setState(payload);
+      isIncomingSync = false;
+    }
+  };
+
+  // Subscribe to local state changes and broadcast them
+  useInterviewStore.subscribe((state) => {
+    if (isIncomingSync) return;
+    channel.postMessage({
+      type: "SYNC_STATE",
+      senderId: tabId,
+      payload: {
+        isRecording: state.isRecording,
+        isConnected: state.isConnected,
+        realtimeSessionId: state.realtimeSessionId,
+        partialTranscript: state.partialTranscript,
+        finalTranscript: state.finalTranscript,
+        aiResponse: state.aiResponse,
+        isAiResponding: state.isAiResponding,
+        status: state.status,
+        error: state.error,
+      },
+    });
+  });
+}
+

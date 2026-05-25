@@ -17,17 +17,17 @@ export default function TranscriptView() {
   }
 
   return (
-    <div className="flex flex-col gap-3 text-sm">
+    <div className="flex flex-col gap-3 text-[13.5px]">
       {/* Transcript section */}
       {(finalTranscript || partialTranscript) && (
-        <div>
+        <div className="space-y-1.5">
           {finalTranscript && (
-            <div className="whitespace-pre-wrap break-words text-zinc-800">
+            <div className="whitespace-pre-wrap break-words text-zinc-200 leading-relaxed">
               {finalTranscript}
             </div>
           )}
           {partialTranscript && (
-            <div className="whitespace-pre-wrap break-words text-zinc-400 italic">
+            <div className="whitespace-pre-wrap break-words text-zinc-500 italic font-normal">
               {partialTranscript}
             </div>
           )}
@@ -36,11 +36,12 @@ export default function TranscriptView() {
 
       {/* AI Response section */}
       {aiResponse && (
-        <div className="mt-2 pt-2 border-t border-zinc-200/60">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-indigo-500 mb-1">
-            AI Response
+        <div className="mt-2.5 p-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 shadow-inner">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-indigo-400 mb-1 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+            AI Suggestion
           </div>
-          <div className="whitespace-pre-wrap break-words text-zinc-700 leading-relaxed">
+          <div className="whitespace-pre-wrap break-words text-zinc-100 leading-relaxed font-normal text-[13px]">
             {aiResponse}
           </div>
         </div>

@@ -18,17 +18,6 @@ export default function Home() {
   const { handleStart } = useInterview();
 
   const isRecording = useInterviewStore((s) => s.isRecording);
-
-  const partialTranscript = useInterviewStore((s) => s.partialTranscript);
-
-  const finalTranscript = useInterviewStore((s) => s.finalTranscript);
-
-  const aiResponse = useInterviewStore((s) => s.aiResponse);
-
-  const isConnected = useInterviewStore((s) => s.isConnected);
-
-  const isAiResponding = useInterviewStore((s) => s.isAiResponding);
-  const status = useInterviewStore((s) => s.status);
   const error = useInterviewStore((s) => s.error);
 
   const { groupedSessions, isLoading } = useSessions();
@@ -37,12 +26,19 @@ export default function Home() {
     <main
       className="
       min-h-screen
-      bg-[#F8F9FA]
-      text-zinc-900
+      bg-[#090D1A]
+      text-zinc-100
       font-sans
       selection:bg-indigo-500/20
+      relative
+      overflow-hidden
     "
     >
+      {/* Decorative premium background grid/glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(#1e1b4b_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 right-10 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+
       {!isRecording && (
         <>
           <div
@@ -51,6 +47,8 @@ export default function Home() {
               justify-center
               pt-8
               pb-6
+              relative
+              z-10
             "
           >
             <a
@@ -61,15 +59,15 @@ export default function Home() {
                 items-center
                 gap-2
                 rounded-full
-                bg-white
+                bg-white/5
                 border
-                border-indigo-100
-                text-indigo-700
+                border-white/10
+                text-indigo-400
                 px-4
                 py-1.5
                 text-sm
                 font-medium
-                hover:bg-indigo-50
+                hover:bg-white/10
                 transition-all
                 shadow-sm
               "
@@ -78,7 +76,7 @@ export default function Home() {
                 Low-latency mode for{" "}
                 <strong
                   className="
-                    text-indigo-900
+                    text-white
                   "
                 >
                   Ted
@@ -102,6 +100,8 @@ export default function Home() {
               max-w-[1000px]
               mx-auto
               px-6
+              relative
+              z-10
             "
           >
             <div
@@ -155,7 +155,7 @@ export default function Home() {
                     className="
                       text-3xl
                       font-bold
-                      text-zinc-900
+                      text-white
                       tracking-tight
                     "
                   >
@@ -167,12 +167,12 @@ export default function Home() {
                   className="
                     p-2.5
                     rounded-xl
-                    bg-white
-                    hover:bg-zinc-50
+                    bg-white/5
+                    hover:bg-white/10
                     transition-colors
                     text-zinc-400
                     border
-                    border-zinc-200
+                    border-white/10
                     shadow-sm
                   "
                 >
@@ -189,20 +189,20 @@ export default function Home() {
                     flex
                     items-center
                     gap-3
-                    bg-white
+                    bg-white/5
                     px-4
                     py-2
                     rounded-xl
                     ml-2
                     border
-                    border-zinc-200
+                    border-white/10
                     shadow-sm
                   "
                 >
                   <span
                     className="
                       text-sm
-                      text-zinc-600
+                      text-zinc-300
                       font-medium
                     "
                   >
@@ -220,7 +220,7 @@ export default function Home() {
                       rounded-full
                       transition-colors
                       focus:outline-none
-                      ${isDetectable ? "bg-indigo-500" : "bg-zinc-200"}
+                      ${isDetectable ? "bg-indigo-600" : "bg-neutral-800"}
                     `}
                   >
                     <span
@@ -268,7 +268,8 @@ export default function Home() {
                     active:scale-[0.98]
                     shadow-lg
                     shadow-indigo-500/25
-                    hover:shadow-indigo-500/40
+                    hover:shadow-indigo-500/45
+                    cursor-pointer
                   "
                 >
                   <div
@@ -311,9 +312,9 @@ export default function Home() {
                 p-4
                 rounded-xl
                 border
-                border-blue-200
-                bg-blue-50
-                text-blue-800
+                border-indigo-500/20
+                bg-indigo-500/5
+                text-indigo-300
                 text-sm
                 flex
                 items-center
@@ -326,7 +327,7 @@ export default function Home() {
                   w-2
                   h-2
                   rounded-full
-                  bg-blue-500
+                  bg-indigo-400
                   animate-pulse
                 "
               />
@@ -335,20 +336,21 @@ export default function Home() {
 
             <div
               className="
-                bg-white
+                bg-neutral-900/40
+                backdrop-blur-xl
                 border
-                border-zinc-200
+                border-white/[0.06]
                 rounded-2xl
                 p-6
-                shadow-xl
-                shadow-zinc-200/50
+                shadow-2xl
+                shadow-black/40
               "
             >
               <h2
                 className="
                   text-lg
                   font-semibold
-                  text-zinc-800
+                  text-white
                   mb-6
                   flex
                   items-center
@@ -361,12 +363,12 @@ export default function Home() {
                     px-2
                     py-0.5
                     rounded-md
-                    bg-zinc-100
+                    bg-neutral-800
                     text-xs
                     font-medium
-                    text-zinc-500
+                    text-zinc-400
                     border
-                    border-zinc-200
+                    border-white/5
                   "
                 >
                   Local DB
@@ -377,7 +379,7 @@ export default function Home() {
                 <div
                   className="
                       text-sm
-                      text-zinc-500
+                      text-zinc-400
                       text-center
                       py-8
                     "
@@ -388,7 +390,7 @@ export default function Home() {
                 <div
                   className="
                       text-sm
-                      text-zinc-500
+                      text-zinc-400
                       text-center
                       py-8
                     "
@@ -408,7 +410,7 @@ export default function Home() {
                       className="
                             text-xs
                             font-bold
-                            text-zinc-400
+                            text-zinc-500
                             uppercase
                             tracking-wider
                             mb-3
@@ -432,10 +434,10 @@ export default function Home() {
                                     items-center
                                     justify-between
                                     p-4
-                                    bg-zinc-50
-                                    hover:bg-zinc-100
+                                    bg-neutral-950/45
+                                    hover:bg-neutral-800/40
                                     border
-                                    border-zinc-100
+                                    border-white/5
                                     rounded-xl
                                     transition-all
                                     cursor-pointer
@@ -456,7 +458,7 @@ export default function Home() {
                                         ${
                                           item.status === "running"
                                             ? "bg-green-500 animate-pulse"
-                                            : "bg-indigo-400/50"
+                                            : "bg-indigo-500/30"
                                         }
                                       `}
                             />
@@ -465,6 +467,7 @@ export default function Home() {
                               className="
                                         text-[15px]
                                         font-medium
+                                        text-zinc-200
                                       "
                             >
                               {item.title}
@@ -483,11 +486,12 @@ export default function Home() {
                                         px-2.5
                                         py-1
                                         rounded-md
-                                        bg-white
+                                        bg-neutral-900
                                         text-xs
                                         font-mono
-                                        text-zinc-500
+                                        text-zinc-400
                                         border
+                                        border-white/5
                                       "
                             >
                               {item.duration}
@@ -496,7 +500,7 @@ export default function Home() {
                             <span
                               className="
                                         text-sm
-                                        text-zinc-400
+                                        text-zinc-500
                                       "
                             >
                               {item.time}
@@ -511,141 +515,6 @@ export default function Home() {
             </div>
           </div>
         </>
-      )}
-
-      {isRecording && (
-        <div
-          className="
-            fixed
-            bottom-6
-            left-6
-            w-[420px]
-            rounded-2xl
-            border
-            border-zinc-800
-            bg-black/95
-            text-white
-            p-5
-            z-[9999]
-            backdrop-blur-xl
-            shadow-2xl
-          "
-        >
-          <div
-            className="
-              flex
-              items-center
-              justify-between
-              mb-4
-            "
-          >
-            <div
-              className="
-                text-sm
-                font-semibold
-              "
-            >
-              Realtime Debug
-            </div>
-
-            <div
-              className="
-                text-xs
-                text-green-400
-              "
-            >
-              {isConnected ? (isAiResponding ? "AI Responding" : status) : "Disconnected"}
-            </div>
-          </div>
-
-          <div
-            className="
-              mb-5
-            "
-          >
-            <div
-              className="
-                text-xs
-                text-zinc-500
-                mb-2
-              "
-            >
-              Partial Transcript
-            </div>
-
-            <div
-              className="
-                italic
-                text-zinc-300
-                min-h-[50px]
-              "
-            >
-              {partialTranscript}
-            </div>
-          </div>
-
-          <div
-            className="
-              mb-5
-            "
-          >
-            <div
-              className="
-                text-xs
-                text-zinc-500
-                mb-2
-              "
-            >
-              Final Transcript
-            </div>
-
-            <div
-              className="
-                text-sm
-                leading-7
-                text-white
-                max-h-[200px]
-                overflow-y-auto
-              "
-            >
-              {finalTranscript}
-            </div>
-          </div>
-
-          <div
-            className="
-              rounded-xl
-              border
-              border-indigo-500/30
-              bg-indigo-500/5
-              p-4
-              min-h-[140px]
-            "
-          >
-            <div
-              className="
-                mb-2
-                text-xs
-                text-indigo-300
-                uppercase
-                tracking-wider
-              "
-            >
-              AI Response
-            </div>
-
-            <div
-              className="
-                text-sm
-                leading-7
-                text-white
-                whitespace-pre-wrap
-              "
-            >
-              {aiResponse || "Waiting for AI response..."}
-            </div>
-          </div>
-        </div>
       )}
 
       <Overlay />
