@@ -3,6 +3,7 @@ import { REALTIME_EVENTS } from "./events.js";
 import { streamAiResponse } from "../ai/stream.js";
 import { interruptAiStream } from "./stream.js";
 import { env } from "../../config/env.js";
+import { db } from "../../db/client.js";
 
 const AI_RESPONSE_DEBOUNCE_MS = Number(env.AI_RESPONSE_DEBOUNCE_MS);
 
@@ -44,8 +45,18 @@ export function emitPartialTranscript(sessionId: string, text: string) {
   );
 }
 
-export function emitFinalTranscript(sessionId: string, text: string) {
+export async function emitFinalTranscript(sessionId: string, text: string) {
   realtimeManager.appendFinalSegment(sessionId, text);
+
+  await db.transcript.create({
+    data: {
+      sessionId,
+
+      role: "interviewer",
+
+      text,
+    },
+  });
 
   const socket = realtimeManager.getSocket(sessionId);
 

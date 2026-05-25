@@ -1,25 +1,35 @@
 import { RealtimeClient } from "../../lib/realtime/client";
 
-import { dbService } from "../../lib/db/postgre";
-
 import { useInterviewStore } from "./store";
 
 // Module-level singleton so start and stop always reference the same client
 let activeClient: RealtimeClient | null = null;
-let activeDbSessionId: string | null = null;
 
 async function startInterview() {
+  if (useInterviewStore.getState().isRecording) {
+    return;
+  }
   try {
-    const realtimeSessionId = crypto.randomUUID();
+    const response = await fetch(
+      "http://localhost:4000/api/session/create",
 
-    useInterviewStore.getState().start(realtimeSessionId);
+      {
+        method: "POST",
 
-    try {
-      const dbSession = await dbService.startDBSession("New Interview Session");
-      activeDbSessionId = dbSession.id;
-    } catch (err) {
-      console.warn("DB session start failed (non-blocking):", err);
+        credentials: "include",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to create session.");
     }
+
+    const data = await response.json();
+
+    const realtimeSessionId = data.session.id;
+
+    useInterviewStore.getState().clearAiResponse();
+    useInterviewStore.getState().start(realtimeSessionId);
 
     const client = new RealtimeClient();
     activeClient = client;
@@ -69,27 +79,53 @@ async function startInterview() {
       .setError(err instanceof Error ? err.message : "Interview start failed.");
     useInterviewStore.getState().setStatus("Error");
     useInterviewStore.getState().setConnected(false);
+
+    const sessionId = useInterviewStore.getState().realtimeSessionId;
+
+    if (sessionId) {
+      try {
+        await fetch(
+          `http://localhost:4000/api/session/end/${sessionId}`,
+
+          {
+            method: "POST",
+
+            credentials: "include",
+          },
+        );
+      } catch {}
+    }
+
     useInterviewStore.getState().stop();
   }
 }
 
 async function stopInterview() {
-  useInterviewStore.getState().stop();
+  const sessionId = useInterviewStore.getState().realtimeSessionId;
 
   activeClient?.disconnect();
+
   activeClient = null;
 
   useInterviewStore.getState().setConnected(false);
+  useInterviewStore.getState().stop();
 
-  if (activeDbSessionId) {
+  if (sessionId) {
     try {
-      await dbService.stopDBSession(activeDbSessionId);
+      await fetch(
+        `http://localhost:4000/api/session/end/${sessionId}`,
+
+        {
+          method: "POST",
+
+          credentials: "include",
+        },
+      );
     } catch (err) {
-      console.error("Failed to stop DB session", err);
+      console.error("Failed to end session", err);
     }
   }
 
-  activeDbSessionId = null;
   window.dispatchEvent(new Event("session-stopped"));
 }
 
