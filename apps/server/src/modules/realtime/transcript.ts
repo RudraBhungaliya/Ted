@@ -4,6 +4,7 @@ import { streamAiResponse } from "../ai/stream.js";
 import { interruptAiStream } from "./stream.js";
 import { env } from "../../config/env.js";
 import { db } from "../../db/client.js";
+import { isInterviewQuestion, isDuplicateQuestion } from "../ai/detector.js";
 
 const AI_RESPONSE_DEBOUNCE_MS = Number(env.AI_RESPONSE_DEBOUNCE_MS);
 
@@ -91,6 +92,18 @@ export async function emitSpeechFinal(sessionId: string) {
   const committed = realtimeManager.commitUserTurn(sessionId);
 
   if (!committed.trim()) {
+    return;
+  }
+
+  if (!isInterviewQuestion(committed)) {
+    console.log("Ignored non-question:", committed);
+
+    return;
+  }
+
+  if (isDuplicateQuestion(sessionId, committed)) {
+    console.log("Duplicate question ignored:", committed);
+
     return;
   }
 

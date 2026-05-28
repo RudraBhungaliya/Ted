@@ -1,22 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
 import { getAllSessions } from "../lib/api/session";
-
 import { SessionCard } from "../components/session-card";
 
 type Session = {
   id: string;
-
   startedAt: string;
-
   endedAt: string | null;
 };
 
 export default function HistoryPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
-
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

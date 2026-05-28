@@ -1,9 +1,7 @@
 type Props = {
   session: {
     id: string;
-
     startedAt: string;
-
     endedAt: string | null;
   };
 };
