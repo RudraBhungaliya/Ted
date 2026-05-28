@@ -1,23 +1,27 @@
-type User = {
-    id : string;
-    name : string;
+import {
+    db,
+} from "../../db/client.js";
+
+type CreateUserData = {
+    fullName : string;
     email : string;
     password : string;
 };
 
-const users : User[] = [];
-
 export async function findUserByEmail(
     email : string,
 ){
-    return users.find(
-        (user) => user.email === email
-    );
+    return db.user.findUnique({
+        where : {
+            email,
+        },
+    });
 }
 
 export async function createUser(
-    user : User,
+    data : CreateUserData,
 ){
-    users.push(user);
-    return user;
+    return db.user.create({
+        data,
+    });
 }

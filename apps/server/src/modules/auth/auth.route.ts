@@ -140,6 +140,8 @@ export async function authRoutes(
                 generateAccessToken({
                     userId:
                         payload.userId,
+                    email: 
+                        payload.email,
                 });
 
             (reply as any).setCookie(

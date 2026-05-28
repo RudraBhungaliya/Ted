@@ -1,5 +1,3 @@
-import { randomUUID } from "crypto";
-
 import {
     createUser,
     findUserByEmail,
@@ -12,6 +10,7 @@ import {
 
 import {
     generateAccessToken,
+    generateRefreshToken,
 } from "../../lib/jwt.js";
 
 import {
@@ -28,7 +27,7 @@ type SignupData = {
 type LoginData = {
     email : string;
     password : string;
-}
+};
 
 export async function signup(
     data : SignupData,
@@ -42,18 +41,19 @@ export async function signup(
     const hashedPassword = await hashPassword(data.password);
 
     const user = await createUser({
-        id : randomUUID(),
-        name : data.name,
+        fullName : data.name,
         email : data.email,
         password : hashedPassword,
     });
 
     const accessToken = generateAccessToken({
         userId : user.id,
+        email : user.email,
     });
 
-    const refreshToken = generateAccessToken({
+    const refreshToken = generateRefreshToken({
         userId : user.id,
+        email : user.email,
     });
 
     return {
@@ -83,10 +83,12 @@ export async function login(
 
     const accessToken = generateAccessToken({
         userId : user.id,
+        email : user.email,
     });
 
-    const refreshToken = generateAccessToken({
+    const refreshToken = generateRefreshToken({
         userId : user.id,
+        email : user.email,
     });
 
     return {
