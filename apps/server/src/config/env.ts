@@ -41,6 +41,14 @@ const envSchema = z.object({
     z.string()
       .optional(),
 
+  GOOGLE_REDIRECT_URI:
+    z.string()
+      .default("http://localhost:4000/api/auth/google/callback"),
+
+  CLIENT_REDIRECT_URL:
+    z.string()
+      .default("http://localhost:3000"),
+
   MICROSOFT_CLIENT_ID:
     z.string()
       .optional(),

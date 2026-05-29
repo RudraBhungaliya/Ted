@@ -5,6 +5,7 @@ import { interruptAiStream } from "./stream.js";
 import { env } from "../../config/env.js";
 import { db } from "../../db/client.js";
 import { isInterviewQuestion, isDuplicateQuestion } from "../ai/detector.js";
+import { analyzeAnswer } from "../analytics/service.js";
 
 const AI_RESPONSE_DEBOUNCE_MS = Number(env.AI_RESPONSE_DEBOUNCE_MS);
 
@@ -52,9 +53,7 @@ export async function emitFinalTranscript(sessionId: string, text: string) {
   await db.transcript.create({
     data: {
       sessionId,
-
-      role: "interviewer",
-
+      speaker: "interviewer",
       text,
     },
   });
@@ -66,8 +65,10 @@ export async function emitFinalTranscript(sessionId: string, text: string) {
   socket.send(
     JSON.stringify({
       event: REALTIME_EVENTS.transcript.final,
+
       payload: {
         sessionId,
+
         text: realtimeManager.getLatestUserTurn(sessionId),
       },
     }),
@@ -108,5 +109,24 @@ export async function emitSpeechFinal(sessionId: string) {
   }
 
   const turns = realtimeManager.getTurns(sessionId);
+
+  const analytics = analyzeAnswer(committed);
+
+  console.log("ANSWER ANALYTICS:", analytics);
+
+  await db.answerAnalytics.create({
+    data: {
+      sessionId,
+
+      totalWords: analytics.totalWords,
+
+      fillerCount: analytics.fillerCount,
+
+      confidenceScore: analytics.confidenceScore,
+
+      usesStarFormat: analytics.usesStarFormat,
+    },
+  });
+
   await streamAiResponse(sessionId, turns);
 }

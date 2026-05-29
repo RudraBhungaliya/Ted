@@ -2,6 +2,7 @@
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
     "@fastify/websocket": "^11.2.0",
+    "@prisma/adapter-pg": "^7.8.0",
     "ws": "^8.20.1"
   },
   "devDependencies": {

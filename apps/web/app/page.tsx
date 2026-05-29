@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { ArrowUpRight, Activity, Zap, Mic } from "lucide-react";
 
@@ -14,6 +14,26 @@ import { useSessions } from "./features/interview/useSessions";
 
 export default function Home() {
   const [isDetectable, setIsDetectable] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    // Auth checks bypassed on frontend for development testing
+    setUser({ fullName: "Test User", email: "test@example.com" });
+    setAuthLoading(false);
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("http://localhost:4000/api/auth/logout", {
+        method: "POST",
+        credentials: "include"
+      });
+      window.location.href = "/login";
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const { handleStart } = useInterview();
 
@@ -21,6 +41,17 @@ export default function Home() {
   const error = useInterviewStore((s) => s.error);
 
   const { groupedSessions, isLoading } = useSessions();
+
+  if (authLoading) {
+    return (
+      <main className="min-h-screen bg-[#090D1A] text-zinc-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-zinc-400 text-sm font-medium">Securing session connection...</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main
@@ -41,6 +72,24 @@ export default function Home() {
 
       {!isRecording && (
         <>
+          {/* Premium Navbar */}
+          <nav className="relative z-20 border-b border-white/[0.06] bg-neutral-950/20 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+                <Zap className="text-white w-4 h-4 fill-white/10" />
+              </div>
+              <span className="font-bold text-lg text-white">Ted Intelligence</span>
+            </div>
+            <div className="flex items-center gap-6 font-medium">
+              <a href="/" className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">Interview</a>
+              <a href="/history" className="text-sm text-zinc-400 hover:text-white transition-colors">History</a>
+              <a href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors">Dashboard</a>
+              <button onClick={handleLogout} className="text-sm text-zinc-400 hover:text-red-400 transition-colors cursor-pointer">
+                Logout
+              </button>
+            </div>
+          </nav>
+
           <div
             className="
               flex

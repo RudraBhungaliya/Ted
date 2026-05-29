@@ -1,5 +1,11 @@
 import { create } from "zustand";
 
+type HistoryTurn = {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+};
+
 type InterviewState = {
   isRecording: boolean;
   isConnected: boolean;
@@ -10,6 +16,9 @@ type InterviewState = {
   isAiResponding: boolean;
   status: string;
   error: string | null;
+  history: HistoryTurn[];
+  sessionMode: "interview" | "meeting";
+  screenAssistEnabled: boolean;
 
   start: (sessionId: string) => void;
 
@@ -33,6 +42,14 @@ type InterviewState = {
 
   setError: (error: string | null) => void;
 
+  setHistory: (history: HistoryTurn[]) => void;
+
+  addHistoryTurn: (turn: HistoryTurn) => void;
+
+  setSessionMode: (mode: "interview" | "meeting") => void;
+
+  setScreenAssistEnabled: (enabled: boolean) => void;
+
   clear: () => void;
 };
 
@@ -46,6 +63,9 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   isAiResponding: false,
   status: "Idle",
   error: null,
+  history: [],
+  sessionMode: "interview",
+  screenAssistEnabled: false,
 
   start: (sessionId: string) =>
     set({
@@ -115,6 +135,26 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       error,
     }),
 
+  setHistory: (history) =>
+    set({
+      history,
+    }),
+
+  addHistoryTurn: (turn) =>
+    set((state) => ({
+      history: [...state.history.filter((t) => t.id !== turn.id), turn],
+    })),
+
+  setSessionMode: (sessionMode) =>
+    set({
+      sessionMode,
+    }),
+
+  setScreenAssistEnabled: (screenAssistEnabled) =>
+    set({
+      screenAssistEnabled,
+    }),
+
   clear: () =>
     set({
       partialTranscript: "",
@@ -126,6 +166,12 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       isAiResponding: false,
 
       error: null,
+
+      history: [],
+
+      sessionMode: "interview",
+
+      screenAssistEnabled: false,
     }),
 }));
 
@@ -160,6 +206,9 @@ if (typeof window !== "undefined") {
         isAiResponding: state.isAiResponding,
         status: state.status,
         error: state.error,
+        history: state.history,
+        sessionMode: state.sessionMode,
+        screenAssistEnabled: state.screenAssistEnabled,
       },
     });
   });

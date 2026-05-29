@@ -21,6 +21,13 @@ const questionPatterns = [
   "how would",
   "why did",
   "introduce yourself",
+  "meaning of",
+  "define",
+  "what does",
+  "what's",
+  "meaning",
+  "definition",
+  "clarify",
 ];
 
 export function isInterviewQuestion(text: string) {

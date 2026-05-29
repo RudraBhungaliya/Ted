@@ -44,5 +44,7 @@ export const REALTIME_EVENTS = {
             "session.end",
         sync : 
             "session.sync",
+        updateMode :
+            "session.updateMode",
     },
 } as const;

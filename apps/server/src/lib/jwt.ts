@@ -3,6 +3,7 @@ import { env } from "../config/env.js";
 
 type JwtPayload = {// for ts for type specifying
     userId : string;
+    email : string;
 };
 
 export function generateAccessToken(
@@ -14,6 +15,18 @@ export function generateAccessToken(
         {
             expiresIn : "7d",
         }
+    );
+}
+
+export function generateRefreshToken(
+    payload : JwtPayload,
+){
+    return jwt.sign(
+        payload,
+        process.env.JWT_SECRET!,
+        {
+            expiresIn : "30d",
+        },
     );
 }
 

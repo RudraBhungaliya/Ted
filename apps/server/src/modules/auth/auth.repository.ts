@@ -1,23 +1,52 @@
-type User = {
-    id : string;
-    name : string;
-    email : string;
-    password : string;
-};
+import {
+    db,
+} from "../../db/client.js";
 
-const users : User[] = [];
+type CreateUserData = {
+    fullName : string;
+    email : string;
+    password? : string;
+    googleId? : string;
+};
 
 export async function findUserByEmail(
     email : string,
 ){
-    return users.find(
-        (user) => user.email === email
-    );
+    return db.user.findUnique({
+        where : {
+            email,
+        },
+    });
+}
+
+export async function findUserByGoogleId(
+    googleId : string,
+){
+    return db.user.findUnique({
+        where : {
+            googleId,
+        },
+    });
+}
+
+export async function linkGoogleAccount(
+    userId : string,
+    googleId : string,
+){
+    return db.user.update({
+        where : {
+            id : userId,
+        },
+        data : {
+            googleId,
+        },
+    });
 }
 
 export async function createUser(
-    user : User,
+    data : CreateUserData,
 ){
-    users.push(user);
-    return user;
+    return db.user.create({
+        data,
+    });
 }

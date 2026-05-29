@@ -2,20 +2,61 @@
 
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { useInterviewStore } from "../features/interview/store";
-import { X, EyeOff, Maximize2, Sparkles, Zap } from "lucide-react";
+import { X, EyeOff, Maximize2, Sparkles, Zap, Briefcase, Coffee, Monitor } from "lucide-react";
 import TranscriptView from "../components/ui/TranscriptView";
 
 type Props = {
   children?: ReactNode;
   onStart: () => void;
   onStop: () => void;
+  onSetMode?: (mode: "interview" | "meeting") => void;
 };
 
-export default function FloatingPanel({ children, onStart, onStop }: Props) {
+export default function FloatingPanel({ children, onStart, onStop, onSetMode }: Props) {
   const isRecording = useInterviewStore((state) => state.isRecording);
   const isAiResponding = useInterviewStore((state) => state.isAiResponding);
   const isConnected = useInterviewStore((state) => state.isConnected);
   const status = useInterviewStore((state) => state.status);
+
+  const history = useInterviewStore((state) => state.history);
+  const finalTranscript = useInterviewStore((state) => state.finalTranscript);
+  const partialTranscript = useInterviewStore((state) => state.partialTranscript);
+  const aiResponse = useInterviewStore((state) => state.aiResponse);
+  const sessionMode = useInterviewStore((state) => state.sessionMode);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
+
+  // Handle scrolling to detect if the user has scrolled up
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    // If the user is within 50px of the bottom, allow auto-scroll. Otherwise, they scrolled up.
+    shouldAutoScrollRef.current = distanceFromBottom <= 50;
+  };
+
+  // Scroll to the bottom when content changes, if shouldAutoScrollRef.current is true
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !shouldAutoScrollRef.current) return;
+
+    container.scrollTop = container.scrollHeight;
+  }, [history, finalTranscript, partialTranscript, aiResponse]);
+
+  // Reset auto-scroll and force scroll to bottom on recording/session start
+  useEffect(() => {
+    if (isRecording) {
+      shouldAutoScrollRef.current = true;
+      const timer = setTimeout(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [isRecording]);
   
   const [isStealth, setIsStealth] = useState(false);
   const [savedSize, setSavedSize] = useState({ width: 380, height: 480 });
@@ -393,12 +434,62 @@ export default function FloatingPanel({ children, onStart, onStop }: Props) {
             </div>
           </div>
 
+          {/* Control Bar (Mode Select & Screen Assist) - Standard Mode Only */}
+          {!isStealth && (
+            <div className="flex items-center justify-between gap-3 p-1.5 bg-white/[0.02] border border-white/5 rounded-xl mb-3">
+              {/* Segmented Mode Selector */}
+              <div className="flex bg-neutral-900/60 p-0.5 rounded-lg border border-white/5">
+                <button
+                  onClick={() => onSetMode?.("interview")}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold tracking-wide transition-all cursor-pointer ${
+                    sessionMode === "interview"
+                      ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-[0_2px_8px_rgba(99,102,241,0.15)]"
+                      : "text-zinc-400 hover:text-zinc-200 border border-transparent"
+                  }`}
+                >
+                  <Briefcase className="w-3 h-3" />
+                  Interview
+                </button>
+                <button
+                  onClick={() => onSetMode?.("meeting")}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold tracking-wide transition-all cursor-pointer ${
+                    sessionMode === "meeting"
+                      ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-[0_2px_8px_rgba(99,102,241,0.15)]"
+                      : "text-zinc-400 hover:text-zinc-200 border border-transparent"
+                  }`}
+                >
+                  <Coffee className="w-3 h-3" />
+                  Meeting
+                </button>
+              </div>
+
+              {/* Screen Assist (Placeholder - Coming Soon) */}
+              <div className="relative group">
+                <button
+                  disabled
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wide text-zinc-500/70 border border-zinc-800/40 bg-zinc-950/20 cursor-not-allowed transition-all opacity-60"
+                >
+                  <Monitor className="w-3 h-3" />
+                  Screen Assist
+                  <span className="bg-zinc-800 text-[8px] text-zinc-400 px-1 rounded uppercase tracking-wider scale-90 border border-zinc-700/50">Soon</span>
+                </button>
+                {/* Micro tooltip */}
+                <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover:block z-30 bg-neutral-900 border border-white/10 text-zinc-300 text-[9px] px-2 py-1 rounded shadow-md whitespace-nowrap">
+                  Read screen text instead of audio (Coming Soon)
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Transcript Area */}
-          <div className={`flex-1 overflow-y-auto w-full custom-scrollbar select-text
-            ${isStealth 
-              ? 'text-xs text-zinc-400 bg-transparent py-1' 
-              : 'bg-black/35 rounded-xl border border-white/5 p-3 text-sm text-zinc-300'
-            }`}
+          <div 
+            ref={scrollContainerRef}
+            onScroll={handleScroll}
+            className={`flex-1 overflow-y-auto w-full custom-scrollbar select-text
+              ${isStealth 
+                ? 'text-xs text-zinc-400 bg-transparent py-1' 
+                : 'bg-black/35 rounded-xl border border-white/5 p-3 text-sm text-zinc-300'
+              }`}
           >
             <TranscriptView />
           </div>
