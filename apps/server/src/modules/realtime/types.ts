@@ -31,5 +31,6 @@ export type SessionState = {
     pendingUserText: string;
     aiStreaming: boolean;
     connected : boolean;
+    mode: "interview" | "meeting";
 };
 

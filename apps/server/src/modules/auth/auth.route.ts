@@ -10,6 +10,7 @@ import {
 import {
     signup,
     login,
+    loginOrSignupWithGoogle,
 } from "./auth.service.js";
 
 import {
@@ -35,9 +36,50 @@ import {
     authMiddleware,
 } from "../../middleware/auth.js";
 
+import { env } from "../../config/env.js";
+
+import {
+    exchangeGoogleCodeForTokens,
+    getGoogleUserProfile,
+} from "../../lib/oauth.js";
+
 export async function authRoutes(
     app : FastifyInstance,
 ){
+    app.get(
+        "/google",
+        async (_, reply) => {
+            const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${env.GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(env.GOOGLE_REDIRECT_URI)}&response_type=code&scope=openid%20profile%20email&prompt=select_account`;
+            return reply.redirect(authUrl);
+        }
+    );
+
+    app.get(
+        "/google/callback",
+        async (request, reply) => {
+            const { code } = request.query as { code?: string };
+            if (!code) {
+                return reply.redirect(`${env.CLIENT_REDIRECT_URL}/login?error=no_code`);
+            }
+            try {
+                const tokens = await exchangeGoogleCodeForTokens(code);
+                const profile = await getGoogleUserProfile(tokens.access_token);
+                
+                const result = await loginOrSignupWithGoogle({
+                    sub: profile.sub,
+                    name: profile.name,
+                    email: profile.email,
+                });
+
+                setAuthCookies(reply, result.accessToken, result.refreshToken);
+
+                return reply.redirect(`${env.CLIENT_REDIRECT_URL}/`);
+            } catch (err) {
+                console.error("Google Auth error:", err);
+                return reply.redirect(`${env.CLIENT_REDIRECT_URL}/login?error=auth_failed`);
+            }
+        }
+    );
     app.post(
         "/signup",
         async (request, reply) => {

@@ -5,7 +5,8 @@ import {
 type CreateUserData = {
     fullName : string;
     email : string;
-    password : string;
+    password? : string;
+    googleId? : string;
 };
 
 export async function findUserByEmail(
@@ -14,6 +15,30 @@ export async function findUserByEmail(
     return db.user.findUnique({
         where : {
             email,
+        },
+    });
+}
+
+export async function findUserByGoogleId(
+    googleId : string,
+){
+    return db.user.findUnique({
+        where : {
+            googleId,
+        },
+    });
+}
+
+export async function linkGoogleAccount(
+    userId : string,
+    googleId : string,
+){
+    return db.user.update({
+        where : {
+            id : userId,
+        },
+        data : {
+            googleId,
         },
     });
 }

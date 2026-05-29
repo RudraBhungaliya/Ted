@@ -26,7 +26,9 @@ model User {
 
   email String @unique
 
-  password String
+  password String?
+
+  googleId String? @unique
 
   createdAt DateTime @default(now())
 
@@ -91,6 +93,8 @@ model Session {
 
   updatedAt DateTime @updatedAt
 
+  mode String @default("interview")
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   transcripts Transcript[]
@@ -98,6 +102,8 @@ model Session {
   aiMessages AiMessage[]
 
   analytics AnswerAnalytics[]
+
+  summary InterviewSummary?
 }
 
 model Transcript {
@@ -150,3 +156,20 @@ model AnswerAnalytics {
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
+
+model InterviewSummary {
+
+  sessionId String @id
+
+  score Int
+
+  strengths String[]
+
+  weaknesses String[]
+
+  recommendations String[]
+
+  createdAt DateTime @default(now())
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}

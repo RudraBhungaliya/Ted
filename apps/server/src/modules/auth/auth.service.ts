@@ -1,6 +1,8 @@
 import {
     createUser,
     findUserByEmail,
+    findUserByGoogleId,
+    linkGoogleAccount,
 } from "./auth.repository.js";
 
 import {
@@ -72,6 +74,11 @@ export async function login(
         throw new UnauthorizedError("Invalid email or password");
     }
 
+    // Google-only users might not have a password set
+    if (!user.password) {
+        throw new UnauthorizedError("Please log in with Google for this account");
+    }
+
     const validPassword = await comparePassword(
         data.password,
         user.password,
@@ -97,4 +104,59 @@ export async function login(
         user,
     };
 }
+
+export async function loginOrSignupWithGoogle(profile: {
+    sub: string;
+    name: string;
+    email: string;
+}) {
+    let user = await findUserByGoogleId(profile.sub);
+
+    if (user) {
+        const accessToken = generateAccessToken({
+            userId: user.id,
+            email: user.email,
+        });
+
+        const refreshToken = generateRefreshToken({
+            userId: user.id,
+            email: user.email,
+        });
+
+        return {
+            accessToken,
+            refreshToken,
+            user,
+        };
+    }
+
+    user = await findUserByEmail(profile.email);
+
+    if (user) {
+        user = await linkGoogleAccount(user.id, profile.sub);
+    } else {
+        user = await createUser({
+            fullName: profile.name,
+            email: profile.email,
+            googleId: profile.sub,
+        });
+    }
+
+    const accessToken = generateAccessToken({
+        userId: user.id,
+        email: user.email,
+    });
+
+    const refreshToken = generateRefreshToken({
+        userId: user.id,
+        email: user.email,
+    });
+
+    return {
+        accessToken,
+        refreshToken,
+        user,
+    };
+}
+
 
