@@ -5,6 +5,7 @@ import { streamAiProvider } from "./providers/index.js";
 import type { ConversationTurn } from "./types.js";
 
 import { db } from "../../db/client.js";
+import { realtimeManager } from "../realtime/manager.js";
 
 import {
   startAiStream,
@@ -18,19 +19,34 @@ export async function streamAiResponse(
   turns: ConversationTurn[],
 ) {
   try {
+    const sessionState = realtimeManager.getSession(sessionId);
+    const mode = sessionState?.mode ?? "interview";
+
     startAiStream(sessionId);
 
     let fullResponse = "";
+    let receivedTokens = false;
 
-    await streamAiProvider(
-      buildMessages(turns),
+    const streamPromise = streamAiProvider(
+      buildMessages(turns, mode),
 
       (token) => {
+        receivedTokens = true;
         fullResponse += token;
 
         streamAiToken(sessionId, token);
       },
     );
+
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => {
+        if (!receivedTokens) {
+          reject(new Error("AI response timed out. Please try again."));
+        }
+      }, 12000);
+    });
+
+    await Promise.race([streamPromise, timeoutPromise]);
 
     await db.aiMessage.create({
       data: {

@@ -1,8 +1,8 @@
-import { randomUUID } from "crypto";
-
 import {
     createUser,
     findUserByEmail,
+    findUserByGoogleId,
+    linkGoogleAccount,
 } from "./auth.repository.js";
 
 import {
@@ -12,6 +12,7 @@ import {
 
 import {
     generateAccessToken,
+    generateRefreshToken,
 } from "../../lib/jwt.js";
 
 import {
@@ -28,7 +29,7 @@ type SignupData = {
 type LoginData = {
     email : string;
     password : string;
-}
+};
 
 export async function signup(
     data : SignupData,
@@ -42,18 +43,19 @@ export async function signup(
     const hashedPassword = await hashPassword(data.password);
 
     const user = await createUser({
-        id : randomUUID(),
-        name : data.name,
+        fullName : data.name,
         email : data.email,
         password : hashedPassword,
     });
 
     const accessToken = generateAccessToken({
         userId : user.id,
+        email : user.email,
     });
 
-    const refreshToken = generateAccessToken({
+    const refreshToken = generateRefreshToken({
         userId : user.id,
+        email : user.email,
     });
 
     return {
@@ -72,6 +74,11 @@ export async function login(
         throw new UnauthorizedError("Invalid email or password");
     }
 
+    // Google-only users might not have a password set
+    if (!user.password) {
+        throw new UnauthorizedError("Please log in with Google for this account");
+    }
+
     const validPassword = await comparePassword(
         data.password,
         user.password,
@@ -83,10 +90,12 @@ export async function login(
 
     const accessToken = generateAccessToken({
         userId : user.id,
+        email : user.email,
     });
 
-    const refreshToken = generateAccessToken({
+    const refreshToken = generateRefreshToken({
         userId : user.id,
+        email : user.email,
     });
 
     return {
@@ -95,4 +104,59 @@ export async function login(
         user,
     };
 }
+
+export async function loginOrSignupWithGoogle(profile: {
+    sub: string;
+    name: string;
+    email: string;
+}) {
+    let user = await findUserByGoogleId(profile.sub);
+
+    if (user) {
+        const accessToken = generateAccessToken({
+            userId: user.id,
+            email: user.email,
+        });
+
+        const refreshToken = generateRefreshToken({
+            userId: user.id,
+            email: user.email,
+        });
+
+        return {
+            accessToken,
+            refreshToken,
+            user,
+        };
+    }
+
+    user = await findUserByEmail(profile.email);
+
+    if (user) {
+        user = await linkGoogleAccount(user.id, profile.sub);
+    } else {
+        user = await createUser({
+            fullName: profile.name,
+            email: profile.email,
+            googleId: profile.sub,
+        });
+    }
+
+    const accessToken = generateAccessToken({
+        userId: user.id,
+        email: user.email,
+    });
+
+    const refreshToken = generateRefreshToken({
+        userId: user.id,
+        email: user.email,
+    });
+
+    return {
+        accessToken,
+        refreshToken,
+        user,
+    };
+}
+
 

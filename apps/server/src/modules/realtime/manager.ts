@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import { SessionState } from "./types.js";
 import type { ConversationTurn } from "../ai/types.js";
+import { db } from "../../db/client.js";
 
 class RealtimeManager {
     private sessions = 
@@ -15,6 +16,7 @@ class RealtimeManager {
 
     createSession(
         sessionId : string,
+        mode: "interview" | "meeting" = "interview",
     ){
         this.sessions.set(
             sessionId,
@@ -25,8 +27,66 @@ class RealtimeManager {
                 pendingUserText: "",
                 aiStreaming: false,
                 connected : true,
+                mode,
             }
         )
+    }
+
+    async restoreSession(
+        sessionId : string,
+        defaultMode: "interview" | "meeting" = "interview",
+    ): Promise<boolean> {
+        if (this.sessions.has(sessionId)) {
+            return true;
+        }
+
+        const session = await db.session.findUnique({
+            where: { id: sessionId },
+            include: {
+                transcripts: {
+                    orderBy: {
+                        createdAt: "asc",
+                    },
+                },
+                aiMessages: {
+                    orderBy: {
+                        createdAt: "asc",
+                    },
+                },
+            },
+        });
+
+        if (!session) return false;
+
+        const userTurns = session.transcripts.map(t => ({
+            role: "user" as const,
+            text: t.text,
+            timestamp: t.createdAt.getTime(),
+        }));
+
+        const assistantTurns = session.aiMessages.map(m => ({
+            role: "assistant" as const,
+            text: m.text,
+            timestamp: m.createdAt.getTime(),
+        }));
+
+        const turns = [...userTurns, ...assistantTurns].sort((a, b) => a.timestamp - b.timestamp);
+        const mode = (session.mode === "meeting" ? "meeting" : defaultMode) as "interview" | "meeting";
+
+        this.sessions.set(
+            sessionId,
+            {
+                sessionId,
+                turns,
+                currentAiTokens: [],
+                pendingUserText: "",
+                aiStreaming: false,
+                connected: true,
+                mode,
+            }
+        );
+
+        return true;
     }
 
     appendFinalSegment(

@@ -17,7 +17,7 @@ async function main(){
     await db.user.create({
         data : {
             email : "demo@ted.com",
-            name : "Demo Ted",
+            fullName : "Demo Ted",
         },
     });
 

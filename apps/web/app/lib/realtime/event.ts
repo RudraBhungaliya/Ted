@@ -7,6 +7,7 @@ export const REALTIME_EVENTS = {
   session: {
     start: "session.start",
     end: "session.end",
+    updateMode: "session.updateMode",
   },
   audio: {
     chunk: "audio.chunk",

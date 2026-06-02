@@ -1,47 +1,47 @@
-import { db } from "../../db/client.js";
+import {
+    createSession,
+    endSession,
+    getSessionById,
+    getUserSessions,
+    getActiveSessionByUserId,
+} from "./service.js";
 
-export async function getSessionById(sessionId: string) {
-  return await db.session.findUnique({
-    where: {
-      id: sessionId,
-    },
-
-    include: {
-      transcripts: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-
-      aiMessages: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-    },
-  });
+export async function createSessionController(
+    userId : string,
+){
+    return await createSession(
+        userId,
+    );
 }
 
-export async function getUserSessions(userId: string) {
-  return await db.session.findMany({
-    where: {
-      userId,
-    },
-    orderBy: {
-      startedAt: "desc",
-    },
-    include: {
-      transcripts: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-
-      aiMessages: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-    },
-  });
+export async function endSessionController(
+    sessionId : string,
+){
+    return await endSession(
+        sessionId,
+    );
 }
+
+export async function getSessionController(
+    sessionId : string,
+){
+    return await getSessionById(
+        sessionId,
+    );
+}
+
+export async function getUserSessionsController(
+    userId : string,
+){
+    return await getUserSessions(
+        userId,
+    );
+}
+
+export async function getActiveSessionController(
+    userId : string,
+){
+    return await getActiveSessionByUserId(
+        userId,
+    );
+}

@@ -11,6 +11,8 @@ import {
   emitSpeechFinal,
 } from "./transcript.js";
 
+import { realtimeManager } from "./manager.js";
+
 const deepgram = createClient(env.DEEPGRAM_API_KEY);
 
 interface DeepgramSession {
@@ -82,6 +84,18 @@ export function initializeDeepgramSession(sessionId: string) {
   connection.on(LiveTranscriptionEvents.Close, () => {
     console.log("Deepgram closed:", sessionId);
     sessionState.isOpen = false;
+
+    // Auto-reconnect if session is still active
+    const session = realtimeManager.getSession(sessionId);
+    if (session) {
+      console.log("Deepgram disconnected unexpectedly. Reconnecting for session:", sessionId);
+      connections.delete(sessionId);
+      setTimeout(() => {
+        if (realtimeManager.getSession(sessionId)) {
+          initializeDeepgramSession(sessionId);
+        }
+      }, 1000);
+    }
   });
 
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
