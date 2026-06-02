@@ -184,7 +184,7 @@ export class RealtimeClient {
         return;
       }
 
-      this.socket.send(chunk.buffer);
+      this.socket.send(chunk.buffer as ArrayBuffer);
     });
   }
 

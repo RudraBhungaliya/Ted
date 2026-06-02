@@ -1,0 +1,5 @@
+[33ma1b18bf[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mrudra[m[33m)[m added Electron wrapper and session persistence with PG
+[33mc3977f3[m added Electron wrapper and session persistence with PG
+[33mbd3e6a3[m[33m ([m[1;31morigin/rudra[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #8 from RudraBhungaliya/rudra
+[33mbc1c991[m PG layer and several other features and debugs
+[33m6d0039d[m PostgreSQL schema setup
