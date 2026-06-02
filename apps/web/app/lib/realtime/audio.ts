@@ -12,9 +12,7 @@ export class AudioEngine {
   private silentGain: GainNode | null = null;
 
   async start(onChunk: (audio: Uint8Array) => void): Promise<void> {
-    this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-
+    this.mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: true,
     });
 

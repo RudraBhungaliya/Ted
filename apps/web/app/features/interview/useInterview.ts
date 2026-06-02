@@ -7,9 +7,12 @@ let activeClient: RealtimeClient | null = null;
 
 async function resumeSession(sessionId: string) {
   try {
-    const response = await fetch(`http://localhost:4000/api/session/${sessionId}`, {
-      credentials: "include",
-    });
+    const response = await fetch(
+      `http://localhost:4000/api/session/${sessionId}`,
+      {
+        credentials: "include",
+      },
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch active session details");
@@ -33,13 +36,15 @@ async function resumeSession(sessionId: string) {
     }));
 
     const sortedTurns = [...userTurns, ...assistantTurns].sort(
-      (a, b) => a.timestamp - b.timestamp
+      (a, b) => a.timestamp - b.timestamp,
     );
 
     useInterviewStore.getState().clearAiResponse();
     useInterviewStore.getState().setHistory(sortedTurns);
     if (session.mode) {
-      useInterviewStore.getState().setSessionMode(session.mode === "meeting" ? "meeting" : "interview");
+      useInterviewStore
+        .getState()
+        .setSessionMode(session.mode === "meeting" ? "meeting" : "interview");
     }
     useInterviewStore.getState().start(sessionId);
 
@@ -90,7 +95,7 @@ async function resumeSession(sessionId: string) {
 
       (message) => {
         useInterviewStore.getState().setError(message);
-      }
+      },
     );
 
     useInterviewStore.getState().setConnected(true);
@@ -105,6 +110,18 @@ async function startInterview() {
     return;
   }
   try {
+    const micStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
+
+    micStream.getTracks().forEach((track) => track.stop());
+
+    const systemStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: true,
+    });
+
+    systemStream.getTracks().forEach((track) => track.stop());
     const response = await fetch(
       "http://localhost:4000/api/session/create",
 
@@ -238,28 +255,28 @@ async function stopInterview() {
 }
 
 export const useInterview = () => {
-  useEffect(() => {
-    async function checkActiveSession() {
-      if (useInterviewStore.getState().isRecording || activeClient) return;
+  // useEffect(() => {
+  //   async function checkActiveSession() {
+  //     if (useInterviewStore.getState().isRecording || activeClient) return;
 
-      try {
-        const res = await fetch("http://localhost:4000/api/session/active", {
-          credentials: "include",
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.session) {
-            console.log("Resuming active session:", data.session.id);
-            resumeSession(data.session.id);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to check active session", err);
-      }
-    }
+  //     try {
+  //       const res = await fetch("http://localhost:4000/api/session/active", {
+  //         credentials: "include",
+  //       });
+  //       if (res.ok) {
+  //         const data = await res.json();
+  //         if (data.session) {
+  //           console.log("Resuming active session:", data.session.id);
+  //           resumeSession(data.session.id);
+  //         }
+  //       }
+  //     } catch (err) {
+  //       console.error("Failed to check active session", err);
+  //     }
+  //   }
 
-    void checkActiveSession();
-  }, []);
+  //   void checkActiveSession();
+  // }, []);
 
   const handleSetMode = (mode: "interview" | "meeting") => {
     useInterviewStore.getState().setSessionMode(mode);
@@ -274,4 +291,3 @@ export const useInterview = () => {
     handleSetMode,
   };
 };
-

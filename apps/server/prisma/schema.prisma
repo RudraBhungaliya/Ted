@@ -19,7 +19,6 @@ enum SessionStatus {
 }
 
 model User {
-
   id String @id @default(cuid())
 
   fullName String?
@@ -42,7 +41,6 @@ model User {
 }
 
 model Subscription {
-
   id String @id @default(cuid())
 
   userId String @unique
@@ -59,7 +57,6 @@ model Subscription {
 }
 
 model Usage {
-
   id String @id @default(cuid())
 
   userId String @unique
@@ -76,7 +73,6 @@ model Usage {
 }
 
 model Session {
-
   id String @id @default(cuid())
 
   userId String
@@ -106,13 +102,17 @@ model Session {
   summary InterviewSummary?
 }
 
-model Transcript {
+enum TranscriptSource {
+  INTERVIEWER
+  CANDIDATE
+}
 
+model Transcript {
   id String @id @default(cuid())
 
   sessionId String
 
-  speaker String @default("user")
+  source TranscriptSource
 
   text String @db.Text
 
@@ -122,7 +122,6 @@ model Transcript {
 }
 
 model AiMessage {
-
   id String @id @default(cuid())
 
   sessionId String
@@ -139,7 +138,6 @@ model AiMessage {
 }
 
 model AnswerAnalytics {
-
   id String @id @default(cuid())
 
   sessionId String
@@ -158,7 +156,6 @@ model AnswerAnalytics {
 }
 
 model InterviewSummary {
-
   sessionId String @id
 
   score Int
@@ -172,4 +169,4 @@ model InterviewSummary {
   createdAt DateTime @default(now())
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-}
+}
