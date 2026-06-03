@@ -12,10 +12,19 @@ export class AudioEngine {
   private silentGain: GainNode | null = null;
 
   async start(onChunk: (audio: Uint8Array) => void): Promise<void> {
-    this.mediaStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
+    try{
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
 
+      console.log("Mic Success");
+      console.log(this.mediaStream.getAudioTracks());
+    }
+    catch(err){ 
+      console.error("Mic error", err);
+      throw err;
+    }
+    
     const audioTracks = this.mediaStream.getAudioTracks();
 
     if (audioTracks.length === 0) {

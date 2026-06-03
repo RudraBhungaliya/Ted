@@ -79,17 +79,19 @@ model Session {
 
   title String?
 
+  mode SessionMode @default(INTERVIEW)
+
   status SessionStatus @default(ACTIVE)
 
   startedAt DateTime @default(now())
 
   endedAt DateTime?
 
+  durationSeconds Int?
+
   createdAt DateTime @default(now())
 
   updatedAt DateTime @updatedAt
-
-  mode String @default("interview")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -97,14 +99,22 @@ model Session {
 
   aiMessages AiMessage[]
 
-  analytics AnswerAnalytics[]
+  analytics SessionAnalytics?
 
-  summary InterviewSummary?
+  summary SessionSummary?
+
+  @@index([userId])
 }
 
-enum TranscriptSource {
-  INTERVIEWER
-  CANDIDATE
+enum SessionMode {
+  INTERVIEW
+  MEETING
+}
+
+enum SpeakerType {
+  USER
+  PARTICIPANT
+  AI
 }
 
 model Transcript {
@@ -112,13 +122,21 @@ model Transcript {
 
   sessionId String
 
-  source TranscriptSource
+  speakerName String
+
+  speakerType SpeakerType
 
   text String @db.Text
 
   createdAt DateTime @default(now())
 
-  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+   session Session @relation(
+    fields: [sessionId],
+    references: [id],
+    onDelete: Cascade
+  )
+
+  @@index([sessionId])
 }
 
 model AiMessage {
@@ -137,34 +155,32 @@ model AiMessage {
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
-model AnswerAnalytics {
-  id String @id @default(cuid())
+model SessionAnalytics {
+  sessionId String @id
 
-  sessionId String
+  totalWords Int @default(0)
 
-  totalWords Int
+  fillerCount Int @default(0)
 
-  fillerCount Int
+  confidenceScore Int?
 
-  confidenceScore Int
+  communicationScore Int?
 
-  usesStarFormat Boolean
+  technicalScore Int?
 
   createdAt DateTime @default(now())
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
 
-model InterviewSummary {
+model SessionSummary {
   sessionId String @id
 
-  score Int
+  overview String @db.Text
 
-  strengths String[]
+  keyPoints String[]
 
-  weaknesses String[]
-
-  recommendations String[]
+  actionItems String[]
 
   createdAt DateTime @default(now())
 

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { RealtimeClient } from "../../lib/realtime/client";
 import { useInterviewStore } from "./store";
 
@@ -116,12 +115,23 @@ async function startInterview() {
 
     micStream.getTracks().forEach((track) => track.stop());
 
-    const systemStream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: true,
-    });
+    try {
+      console.log("Requesting system audio...");
 
-    systemStream.getTracks().forEach((track) => track.stop());
+      const systemStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+
+      console.log("System stream acquired");
+      console.log(systemStream.getTracks());
+
+      systemStream.getTracks().forEach((track) => track.stop());
+    } catch (err) {
+      console.error("DISPLAY MEDIA ERROR", err);
+      throw err;
+    }
+
     const response = await fetch(
       "http://localhost:4000/api/session/create",
 
