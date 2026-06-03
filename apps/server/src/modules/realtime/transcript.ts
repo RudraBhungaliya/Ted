@@ -6,6 +6,9 @@ import { env } from "../../config/env.js";
 import { db } from "../../db/client.js";
 import { isInterviewQuestion, isDuplicateQuestion } from "../ai/detector.js";
 import { analyzeAnswer } from "../analytics/service.js";
+import {
+  saveTranscript,
+} from "../transcript/service.js";
 
 const AI_RESPONSE_DEBOUNCE_MS = Number(env.AI_RESPONSE_DEBOUNCE_MS);
 
@@ -50,13 +53,12 @@ export function emitPartialTranscript(sessionId: string, text: string) {
 export async function emitFinalTranscript(sessionId: string, text: string) {
   realtimeManager.appendFinalSegment(sessionId, text);
 
-  await db.transcript.create({
-    data: {
-      sessionId,
-      speaker: "interviewer",
-      text,
-    },
-  });
+  await saveTranscript(
+    sessionId,
+    "Interviewer",
+    "PARTICIPANT",
+    text,
+  );
 
   const socket = realtimeManager.getSocket(sessionId);
 

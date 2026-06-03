@@ -67,17 +67,7 @@ export async function getUserSessions(userId: string) {
     },
 
     include: {
-      transcripts: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
-
-      aiMessages: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
+      summary: true,
     },
   });
 }
@@ -104,6 +94,7 @@ export async function getActiveSessionByUserId(userId: string) {
           createdAt: "desc",
         },
       },
+      summary: true,
     },
   });
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { getSession } from "../../lib/api/session";
-import { SessionMessage } from "../../components/session-message";
+import { getSession } from "../../../lib/api/session";
+import { SessionMessage } from "../../../components/session-message";
 import { Award } from "lucide-react";
 
 type Transcript = {
