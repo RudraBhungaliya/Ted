@@ -75,8 +75,7 @@ export function SessionDetails({
         (t: any) => (
           <div key={t.id}>
             <strong>
-              {t.speakerName ??
-                t.source}
+              {t.speakerName ?? t.source ?? t.speakerType}
             </strong>
 
             : {t.text}

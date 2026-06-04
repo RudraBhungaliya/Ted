@@ -11,12 +11,12 @@ export async function generateSessionSummary(sessionId: string) {
       where: { id: sessionId },
       include: {
         transcripts: {
-          orderBy: { createdAt: "asc" }
+          orderBy: { createdAt: "asc" },
         },
         aiMessages: {
-          orderBy: { createdAt: "asc" }
-        }
-      }
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
 
     if (!session) {
@@ -25,26 +25,41 @@ export async function generateSessionSummary(sessionId: string) {
     }
 
     if (session.transcripts.length === 0) {
-      console.log(`No transcripts recorded for session ${sessionId}. Storing default empty summary.`);
-      await db.interviewSummary.create({
-        data: {
+      console.log(
+        `No transcripts recorded for session ${sessionId}. Storing default empty summary.`,
+      );
+      await db.sessionSummary.upsert({
+        where: {
           sessionId,
-          score: 0,
-          strengths: ["No interview responses recorded"],
-          weaknesses: ["No interview responses recorded"],
-          recommendations: ["Speak during the interview to generate feedback recommendations"],
-        }
+        },
+
+        create: {
+          sessionId,
+
+          overview: "No conversation recorded.",
+
+          keyPoints: [],
+
+          actionItems: [],
+        },
+
+        update: {
+          overview: "No conversation recorded.",
+
+          keyPoints: [],
+
+          actionItems: [],
+        },
       });
       return;
     }
 
     // 2. Format transcript
-    const historyText = session.transcripts.map((t, idx) => {
-      const matchingAi = session.aiMessages[idx]?.text || "No AI feedback stream.";
-      return `User Answer/Question: ${t.text}\nAI Feedback/Response: ${matchingAi}\n---`;
-    }).join("\n");
+    const historyText = session.transcripts
+      .map((t) => `${t.speakerName}: ${t.text}`)
+      .join("\n");
 
-    const isMeeting = session.mode === "meeting";
+    const isMeeting = session.mode === "MEETING";
     const prompt = isMeeting
       ? `
 You are an expert executive assistant and meeting coordinator. You will analyze the conversation transcripts and the AI assistant responses from a casual meeting/discussion session.
@@ -65,10 +80,9 @@ Evaluate:
 
 Provide the response in the following JSON format:
 {
-  "score": <number between 0 and 100>,
-  "strengths": ["string", "string", ...],
-  "weaknesses": ["string", "string", ...],
-  "recommendations": ["string", "string", ...]
+  "overview": "string",
+  "keyPoints": ["string"],
+  "actionItems": ["string"]
 }
 
 Return ONLY valid JSON.
@@ -92,10 +106,9 @@ Evaluate:
 
 Provide the response in the following JSON format:
 {
-  "score": <number between 0 and 100>,
-  "strengths": ["string", "string", ...],
-  "weaknesses": ["string", "string", ...],
-  "recommendations": ["string", "string", ...]
+  "overview": "string",
+  "keyPoints": ["string"],
+  "actionItems": ["string"]
 }
 
 Return ONLY valid JSON.
@@ -107,45 +120,76 @@ Return ONLY valid JSON.
       contents: prompt,
       config: {
         responseMimeType: "application/json",
-      }
+      },
     });
 
     const contentText = response.text;
     if (!contentText) {
-      throw new Error("Received empty response from Gemini API for summary generation.");
+      throw new Error(
+        "Received empty response from Gemini API for summary generation.",
+      );
     }
 
     const json = JSON.parse(contentText) as {
-      score: number;
-      strengths: string[];
-      weaknesses: string[];
-      recommendations: string[];
+      overview: string;
+      keyPoints: string[];
+      actionItems: string[];
     };
 
     // 4. Save to PostgreSQL db
-    await db.interviewSummary.create({
-      data: {
+    await db.sessionSummary.upsert({
+      where: {
         sessionId,
-        score: Math.min(100, Math.max(0, json.score || 70)),
-        strengths: json.strengths || [],
-        weaknesses: json.weaknesses || [],
-        recommendations: json.recommendations || [],
-      }
+      },
+
+      create: {
+        sessionId,
+
+        overview: json.overview ?? "No overview generated.",
+
+        keyPoints: json.keyPoints ?? [],
+
+        actionItems: json.actionItems ?? [],
+      },
+
+      update: {
+        overview: json.overview ?? "No overview generated.",
+
+        keyPoints: json.keyPoints ?? [],
+
+        actionItems: json.actionItems ?? [],
+      },
     });
 
-    console.log(`Generated and stored interview summary for session: ${sessionId}`);
+    console.log(
+      `Generated and stored interview summary for session: ${sessionId}`,
+    );
   } catch (error) {
     console.error("Failed to generate session summary:", error);
     // Fallback summary on failure so we don't crash
     try {
-      await db.interviewSummary.create({
-        data: {
+      await db.sessionSummary.upsert({
+        where: {
           sessionId,
-          score: 70,
-          strengths: ["Communication style", "Problem solving approach"],
-          weaknesses: ["Filler word usage", "STAR format structure"],
-          recommendations: ["Review the transcript to identify filler word counts", "Implement explicit Situation-Task-Action-Result stages in your answers"],
-        }
+        },
+
+        create: {
+          sessionId,
+
+          overview: "Summary generation failed.",
+
+          keyPoints: [],
+
+          actionItems: [],
+        },
+
+        update: {
+          overview: "Summary generation failed.",
+
+          keyPoints: [],
+
+          actionItems: [],
+        },
       });
     } catch {}
   }

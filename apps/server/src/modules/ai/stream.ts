@@ -1,5 +1,7 @@
 import { buildMessages } from "./prompt.js";
 
+import { saveTranscript } from "../transcript/service.js";
+
 import { streamAiProvider } from "./providers/index.js";
 
 import type { ConversationTurn } from "./types.js";
@@ -51,10 +53,13 @@ export async function streamAiResponse(
     await db.aiMessage.create({
       data: {
         sessionId,
-
+        provider: "gemini",
+        model: "gemini-2.5-flash",
         text: fullResponse,
       },
     });
+
+    await saveTranscript(sessionId, "TED", "AI", fullResponse);
 
     endAiStream(sessionId);
   } catch (error) {

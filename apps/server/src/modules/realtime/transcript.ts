@@ -6,9 +6,7 @@ import { env } from "../../config/env.js";
 import { db } from "../../db/client.js";
 import { isInterviewQuestion, isDuplicateQuestion } from "../ai/detector.js";
 import { analyzeAnswer } from "../analytics/service.js";
-import {
-  saveTranscript,
-} from "../transcript/service.js";
+import { saveTranscript } from "../transcript/service.js";
 
 const AI_RESPONSE_DEBOUNCE_MS = Number(env.AI_RESPONSE_DEBOUNCE_MS);
 
@@ -53,12 +51,7 @@ export function emitPartialTranscript(sessionId: string, text: string) {
 export async function emitFinalTranscript(sessionId: string, text: string) {
   realtimeManager.appendFinalSegment(sessionId, text);
 
-  await saveTranscript(
-    sessionId,
-    "Interviewer",
-    "PARTICIPANT",
-    text,
-  );
+  await saveTranscript(sessionId, "Interviewer", "PARTICIPANT", text);
 
   const socket = realtimeManager.getSocket(sessionId);
 
@@ -98,6 +91,8 @@ export async function emitSpeechFinal(sessionId: string) {
     return;
   }
 
+  await saveTranscript(sessionId, "User", "USER", committed);
+
   if (!isInterviewQuestion(committed)) {
     console.log("Ignored non-question:", committed);
 
@@ -116,8 +111,12 @@ export async function emitSpeechFinal(sessionId: string) {
 
   console.log("ANSWER ANALYTICS:", analytics);
 
-  await db.answerAnalytics.create({
-    data: {
+  await db.sessionAnalytics.upsert({
+    where: {
+      sessionId,
+    },
+
+    create: {
       sessionId,
 
       totalWords: analytics.totalWords,
@@ -125,8 +124,18 @@ export async function emitSpeechFinal(sessionId: string) {
       fillerCount: analytics.fillerCount,
 
       confidenceScore: analytics.confidenceScore,
+    },
 
-      usesStarFormat: analytics.usesStarFormat,
+    update: {
+      totalWords: {
+        increment: analytics.totalWords,
+      },
+
+      fillerCount: {
+        increment: analytics.fillerCount,
+      },
+
+      confidenceScore: analytics.confidenceScore,
     },
   });
 

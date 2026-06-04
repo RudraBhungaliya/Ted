@@ -1,12 +1,28 @@
 import { db } from "../../db/client.js";
 import { generateSessionSummary } from "./summary.js";
 
-export async function createSession(userId: string) {
-  return await db.session.create({
-    data: {
-      userId,
-    },
-  });
+export async function createSession(
+  userId: string,
+  mode: "INTERVIEW" | "MEETING",
+) {
+  try {
+    console.log("Creating session for:", userId);
+
+    const session = await db.session.create({
+      data: {
+        userId,
+        mode,
+      },
+    });
+
+    console.log("Session created:", session.id);
+
+    return session;
+  } catch (err) {
+    console.error("CREATE SESSION ERROR", err);
+
+    throw err;
+  }
 }
 
 export async function endSession(sessionId: string) {
@@ -45,11 +61,7 @@ export async function getSessionById(sessionId: string) {
         },
       },
 
-      analytics: {
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
+      analytics: true,
 
       summary: true,
     },
@@ -84,18 +96,16 @@ export async function getActiveSessionByUserId(userId: string) {
           createdAt: "asc",
         },
       },
+
       aiMessages: {
         orderBy: {
           createdAt: "asc",
         },
       },
-      analytics: {
-        orderBy: {
-          createdAt: "desc",
-        },
-      },
+
+      analytics: true,
+
       summary: true,
     },
   });
 }
-

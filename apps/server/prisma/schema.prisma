@@ -130,11 +130,7 @@ model Transcript {
 
   createdAt DateTime @default(now())
 
-   session Session @relation(
-    fields: [sessionId],
-    references: [id],
-    onDelete: Cascade
-  )
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
 }

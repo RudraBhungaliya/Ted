@@ -8,9 +8,11 @@ import {
 
 export async function createSessionController(
     userId : string,
+    mode : "INTERVIEW" | "MEETING",
 ){
     return await createSession(
         userId,
+        mode,
     );
 }
 
@@ -44,4 +46,4 @@ export async function getActiveSessionController(
     return await getActiveSessionByUserId(
         userId,
     );
-}
+}

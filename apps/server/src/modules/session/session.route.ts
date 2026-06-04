@@ -1,168 +1,128 @@
-import type {
-    FastifyInstance,
-} from "fastify";
+import type { FastifyInstance } from "fastify";
+
+import { authMiddleware } from "../../middleware/auth.js";
 
 import {
-    authMiddleware,
-} from "../../middleware/auth.js";
-
-import {
-    createSessionController,
-    endSessionController,
-    getSessionController,
-    getUserSessionsController,
-    getActiveSessionController,
+  createSessionController,
+  endSessionController,
+  getSessionController,
+  getUserSessionsController,
+  getActiveSessionController,
 } from "./controller.js";
 
-export async function sessionRoutes(
-    app : FastifyInstance,
-){
+export async function sessionRoutes(app: FastifyInstance) {
+  app.post(
+    "/create",
 
-    app.post(
-        "/create",
+    {
+      preHandler: authMiddleware,
+    },
 
-        {
-            preHandler : authMiddleware,
-        },
+    async (request) => {
+      const { mode } = request.body as {
+        mode: "INTERVIEW" | "MEETING";
+      };
 
-        async (request) => {
+      const session = await createSessionController(request.user!.userId, mode);
 
-            const session =
-                await createSessionController(
-                    request.user!.userId,
-                );
+      return {
+        success: true,
+        session,
+      };
+    },
+  );
 
-            return {
-                success : true,
+  app.post(
+    "/end/:sessionId",
 
-                session,
-            };
-        },
-    );
+    {
+      preHandler: authMiddleware,
+    },
 
-    app.post(
-        "/end/:sessionId",
+    async (request) => {
+      const { sessionId } = request.params as {
+        sessionId: string;
+      };
 
-        {
-            preHandler : authMiddleware,
-        },
+      await endSessionController(sessionId);
 
-        async (request) => {
+      return {
+        success: true,
+      };
+    },
+  );
 
-            const {
-                sessionId,
-            } = request.params as {
-                sessionId : string;
-            };
+  app.get(
+    "/active",
 
-            await endSessionController(
-                sessionId,
-            );
+    {
+      preHandler: authMiddleware,
+    },
 
-            return {
-                success : true,
-            };
-        },
-    );
+    async (request) => {
+      const session = await getActiveSessionController(request.user!.userId);
 
-    app.get(
-        "/active",
+      return {
+        success: true,
 
-        {
-            preHandler : authMiddleware,
-        },
+        session,
+      };
+    },
+  );
 
-        async (request) => {
+  app.get(
+    "/:sessionId",
 
-            const session =
-                await getActiveSessionController(
-                    request.user!.userId,
-                );
+    {
+      preHandler: authMiddleware,
+    },
 
-            return {
-                success : true,
+    async (request, reply) => {
+      const { sessionId } = request.params as {
+        sessionId: string;
+      };
 
-                session,
-            };
-        },
-    );
+      const session = await getSessionController(sessionId);
 
-    app.get(
-        "/:sessionId",
+      if (!session) {
+        return reply.status(404).send({
+          success: false,
 
-        {
-            preHandler : authMiddleware,
-        },
+          message: "Session not found",
+        });
+      }
 
-        async (request, reply) => {
+      if (session.userId !== request.user!.userId) {
+        return reply.status(403).send({
+          success: false,
 
-            const {
-                sessionId,
-            } = request.params as {
-                sessionId : string;
-            };
+          message: "Forbidden",
+        });
+      }
 
-            const session =
-                await getSessionController(
-                    sessionId,
-                );
+      return {
+        success: true,
 
-            if (!session) {
+        session,
+      };
+    },
+  );
 
-                return reply
-                    .status(404)
-                    .send({
+  app.get(
+    "/user/all",
 
-                        success : false,
+    {
+      preHandler: authMiddleware,
+    },
 
-                        message : "Session not found",
+    async (request) => {
+      const sessions = await getUserSessionsController(request.user!.userId);
 
-                    });
-            }
+      return {
+        success: true,
 
-            if (
-                session.userId !==
-                request.user!.userId
-            ) {
-
-                return reply
-                    .status(403)
-                    .send({
-
-                        success : false,
-
-                        message : "Forbidden",
-
-                    });
-            }
-
-            return {
-                success : true,
-
-                session,
-            };
-        },
-    );
-
-    app.get(
-        "/user/all",
-
-        {
-            preHandler : authMiddleware,
-        },
-
-        async (request) => {
-
-            const sessions =
-                await getUserSessionsController(
-                    request.user!.userId,
-                );
-
-            return {
-                success : true,
-
-                sessions,
-            };
-        },
-    );
+        sessions,
+      };
+    },
+  );
 }
