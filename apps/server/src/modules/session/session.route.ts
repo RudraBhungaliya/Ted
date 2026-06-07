@@ -9,7 +9,7 @@ import {
 } from "./controller.js";
 
 export async function sessionRoutes(app: FastifyInstance) {
-  // POST: /api/session/create
+  // 1. POST: /api/session/create
   app.post(
     "/create",
     {
@@ -29,7 +29,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     },
   );
 
-  // POST: /api/session/end/:sessionId
+  // 2. POST: /api/session/end/:sessionId
   app.post(
     "/end/:sessionId",
     {
@@ -48,7 +48,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     },
   );
 
-  // GET: /api/session/active
+  // 3. GET: /api/session/active
   app.get(
     "/active",
     {
@@ -64,15 +64,17 @@ export async function sessionRoutes(app: FastifyInstance) {
     },
   );
 
-  // GET: /api/session/
+  // 4. GET: /api/session/user/all
+  // CRITICAL FIX: Registered BEFORE parameterized routes so "user" isn't hijacked as an ID variable
   app.get(
-    "/",
+    "/user/all",
     {
       preHandler: authMiddleware,
     },
     async (request, reply) => {
       try {
-        console.log("Fetching historical sessions for user context:", request.user!.userId);
+        console.log("USER SYSTEM REGISTRY CONTEXT:", request.user);
+
         const sessions = await getUserSessionsController(request.user!.userId);
 
         return {
@@ -80,7 +82,8 @@ export async function sessionRoutes(app: FastifyInstance) {
           sessions,
         };
       } catch (err) {
-        console.error("GET USER SESSIONS ROUTE ERROR:", err);
+        console.error("GET USER SESSIONS ERROR:", err);
+
         return reply.status(500).send({
           success: false,
           error: String(err),
@@ -89,45 +92,7 @@ export async function sessionRoutes(app: FastifyInstance) {
     },
   );
 
-  // GET: /api/session/all
-  app.get(
-    "/all",
-    {
-      preHandler: authMiddleware,
-    },
-    async (request, reply) => {
-      try {
-        const sessions = await getUserSessionsController(request.user!.userId);
-        return {
-          success: true,
-          sessions,
-        };
-      } catch (err) {
-        return reply.status(500).send({ success: false, error: String(err) });
-      }
-    },
-  );
-
-  // GET: /api/session/user/all (Maps cleanly to your frontend fallback configurations)
-  app.get(
-    "/user/all",
-    {
-      preHandler: authMiddleware,
-    },
-    async (request, reply) => {
-      try {
-        const sessions = await getUserSessionsController(request.user!.userId);
-        return {
-          success: true,
-          sessions,
-        };
-      } catch (err) {
-        return reply.status(500).send({ success: false, error: String(err) });
-      }
-    },
-  );
-
-  // GET: /api/session/:sessionId
+  // 5. GET: /api/session/:sessionId
   app.get(
     "/:sessionId",
     {

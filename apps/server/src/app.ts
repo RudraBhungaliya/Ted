@@ -18,6 +18,7 @@ import { startRealtimeWorker } from "./modules/realtime/worker.js";
 
 const app = Fastify({
   logger: false,
+  ignoreTrailingSlash: true,
 });
 
 await app.register(websocket);

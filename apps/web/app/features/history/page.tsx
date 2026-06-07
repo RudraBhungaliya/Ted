@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-import { SessionList } from "../session/SessionList";
-import { SessionDetails } from "../session/SessionDetails";
+import { SessionList } from "../session/sessionList";
+import { SessionDetails } from "../session/sessionDetails";
 
 export default function HistoryPage() {
   const [
