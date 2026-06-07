@@ -115,14 +115,24 @@ export async function sessionRoutes(app: FastifyInstance) {
       preHandler: authMiddleware,
     },
 
-    async (request) => {
-      const sessions = await getUserSessionsController(request.user!.userId);
+    async (request, reply) => {
+      try {
+        console.log("USER:", request.user);
 
-      return {
-        success: true,
+        const sessions = await getUserSessionsController(request.user!.userId);
 
-        sessions,
-      };
+        return {
+          success: true,
+          sessions,
+        };
+      } catch (err) {
+        console.error("GET USER SESSIONS ERROR:", err);
+
+        return reply.status(500).send({
+          success: false,
+          error: String(err),
+        });
+      }
     },
   );
 }

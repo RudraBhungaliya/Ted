@@ -13,9 +13,9 @@ import { useInterviewStore } from "./features/interview/store";
 import { useSessions } from "./features/interview/useSessions";
 
 export default function Home() {
-  const [isDetectable, setIsDetectable] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Auth checks bypassed on frontend for development testing
@@ -27,7 +27,7 @@ export default function Home() {
     try {
       await fetch("http://localhost:4000/api/auth/logout", {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
       });
       window.location.href = "/login";
     } catch (err) {
@@ -35,10 +35,11 @@ export default function Home() {
     }
   };
 
-  const { handleStart } = useInterview();
+  const { handleStart, handleSetMode } = useInterview();
 
   const isRecording = useInterviewStore((s) => s.isRecording);
-  const error = useInterviewStore((s) => s.error);
+
+  const sessionMode = useInterviewStore((s) => s.sessionMode);
 
   const { groupedSessions, isLoading } = useSessions();
 
@@ -47,7 +48,9 @@ export default function Home() {
       <main className="min-h-screen bg-[#090D1A] text-zinc-100 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-zinc-400 text-sm font-medium">Securing session connection...</p>
+          <p className="text-zinc-400 text-sm font-medium">
+            Securing session connection...
+          </p>
         </div>
       </main>
     );
@@ -66,25 +69,45 @@ export default function Home() {
     "
     >
       {/* Decorative premium background grid/glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1e1b4b_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(#1e1b4b_1.2px,transparent_1.2px)] bg-size-[24px_24px] opacity-15 pointer-events-none" />
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 right-10 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 right-10 w-125 h-125 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
 
       {!isRecording && (
         <>
           {/* Premium Navbar */}
-          <nav className="relative z-20 border-b border-white/[0.06] bg-neutral-950/20 backdrop-blur-md px-6 py-4 flex items-center justify-between">
+          <nav className="relative z-20 border-b border-white/6 bg-neutral-950/20 backdrop-blur-md px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
                 <Zap className="text-white w-4 h-4 fill-white/10" />
               </div>
-              <span className="font-bold text-lg text-white">Ted Intelligence</span>
+              <span className="font-bold text-lg text-white">
+                Ted Intelligence
+              </span>
             </div>
             <div className="flex items-center gap-6 font-medium">
-              <a href="/" className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors">Interview</a>
-              <a href="/history" className="text-sm text-zinc-400 hover:text-white transition-colors">History</a>
-              <a href="/dashboard" className="text-sm text-zinc-400 hover:text-white transition-colors">Dashboard</a>
-              <button onClick={handleLogout} className="text-sm text-zinc-400 hover:text-red-400 transition-colors cursor-pointer">
+              <a
+                href="/"
+                className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                Interview
+              </a>
+              <a
+                href="/history"
+                className="text-sm text-zinc-400 hover:text-white transition-colors"
+              >
+                History
+              </a>
+              <a
+                href="/dashboard"
+                className="text-sm text-zinc-400 hover:text-white transition-colors"
+              >
+                Dashboard
+              </a>
+              <button
+                onClick={handleLogout}
+                className="text-sm text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+              >
                 Logout
               </button>
             </div>
@@ -146,7 +169,7 @@ export default function Home() {
 
           <div
             className="
-              max-w-[1000px]
+              max-w-250
               mx-auto
               px-6
               relative
@@ -180,7 +203,7 @@ export default function Home() {
                       w-10
                       h-10
                       rounded-xl
-                      bg-gradient-to-br
+                      bg-linear-to-br
                       from-indigo-500
                       to-indigo-600
                       flex
@@ -250,16 +273,22 @@ export default function Home() {
                 >
                   <span
                     className="
-                      text-sm
-                      text-zinc-300
-                      font-medium
-                    "
+    text-sm
+    text-zinc-300
+    font-medium
+  "
                   >
-                    Interview Mode
+                    {sessionMode === "interview"
+                      ? "Interview Mode"
+                      : "Meeting Mode"}
                   </span>
 
                   <button
-                    onClick={() => setIsDetectable(!isDetectable)}
+                    onClick={() =>
+                      handleSetMode(
+                        sessionMode === "interview" ? "meeting" : "interview",
+                      )
+                    }
                     className={`
                       relative
                       inline-flex
@@ -269,7 +298,11 @@ export default function Home() {
                       rounded-full
                       transition-colors
                       focus:outline-none
-                      ${isDetectable ? "bg-indigo-600" : "bg-neutral-800"}
+                      ${
+                        sessionMode === "interview"
+                          ? "bg-indigo-600"
+                          : "bg-neutral-800"
+                      }
                     `}
                   >
                     <span
@@ -281,7 +314,11 @@ export default function Home() {
                         rounded-full
                         bg-white
                         transition-transform
-                        ${isDetectable ? "translate-x-4" : "translate-x-1"}
+                        ${
+                          sessionMode === "interview"
+                            ? "translate-x-4"
+                            : "translate-x-1"
+                        }
                         shadow-sm
                       `}
                     />
@@ -325,7 +362,7 @@ export default function Home() {
                     className="
                       absolute
                       inset-0
-                      bg-gradient-to-r
+                      bg-linear-to-r
                       from-indigo-400
                       to-indigo-600
                       opacity-0
@@ -380,21 +417,22 @@ export default function Home() {
                   animate-pulse
                 "
               />
-              {error ?? "Ready for realtime microphone questions and instant text answers."}
+              {error ??
+                "Ready for realtime microphone questions and instant text answers."}
             </div>
 
-            <div
-              className="
-                bg-neutral-900/40
-                backdrop-blur-xl
-                border
-                border-white/[0.06]
-                rounded-2xl
-                p-6
-                shadow-2xl
-                shadow-black/40
-              "
-            >
+              <div
+                className="
+                  bg-neutral-900/40
+                  backdrop-blur-xl
+                  border
+                  border-white/6
+                  rounded-2xl
+                  p-6
+                  shadow-2xl
+                  shadow-black/40
+                "
+              >
               <h2
                 className="
                   text-lg

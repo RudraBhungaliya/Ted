@@ -74,6 +74,8 @@ const envSchema = z.object({
 
 });
 
+console.log("DATABASE_URL =", process.env.DATABASE_URL);
+
 export const env =
   envSchema.parse(
     process.env,

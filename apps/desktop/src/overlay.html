@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ted Overlay Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Glassmorphism overlay panel */
+    #overlayPanel {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      width: 350px;
+      max-height: 80vh;
+      background: rgba(30, 30, 30, 0.6);
+      backdrop-filter: blur(12px);
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+    }
+    #overlayHeader {
+      padding: 0.5rem 1rem;
+      background: rgba(0, 0, 0, 0.3);
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #overlayBody { flex: 1; overflow-y: auto; padding: 0.5rem 1rem; }
+    .tab { background: none; border: none; color: #ccc; margin-right: 0.5rem; cursor: pointer; }
+    .tab.active { color: #fff; border-bottom: 2px solid #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    #chatLog { max-height: 200px; overflow-y: auto; }
+    button { border-radius: 6px; border: none; padding: 0.4rem 0.8rem; background: #1a1a1a; color: #fff; cursor: pointer; }
+    button:hover { background: #333; }
+  </style>
+</head>
+<body>
+<div id="overlayPanel">
+  <div id="overlayHeader">
+    <span>Ted Assistant</span>
+    <button id="closeOverlay">✕</button>
+  </div>
+  <div id="overlayBody">
+    <div class="tabs">
+      <button class="tab active" data-tab="chat">Chat</button>
+      <button class="tab" data-tab="assist">Assist</button>
+      <button class="tab" data-tab="summary">Summary</button>
+    </div>
+    <div class="tab-content active" id="chatTab">
+      <div id="chatLog" class="log"></div>
+      <input id="chatInput" type="text" placeholder="Type a message..." />
+      <button id="sendChat">Send</button>
+    </div>
+    <div class="tab-content" id="assistTab"><div id="assistOutput" class="log"></div></div>
+    <div class="tab-content" id="summaryTab"><pre id="summaryOutput"></pre></div>
+  </div>
+</div>
+<script src="overlay.js"></script>
+</body>
+</html>

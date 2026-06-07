@@ -26,13 +26,24 @@ export async function createSession(
 }
 
 export async function endSession(sessionId: string) {
+  const existing = await db.session.findUnique({
+    where: {
+      id: sessionId,
+    },
+  });
+
+  const now = new Date();
+
   const session = await db.session.update({
     where: {
       id: sessionId,
     },
     data: {
-      endedAt: new Date(),
+      endedAt: now,
       status: "COMPLETED",
+      durationSeconds: existing
+        ? Math.floor((now.getTime() - existing.startedAt.getTime()) / 1000)
+        : null,
     },
   });
 
@@ -68,20 +79,16 @@ export async function getSessionById(sessionId: string) {
   });
 }
 
-export async function getUserSessions(userId: string) {
-  return await db.session.findMany({
-    where: {
-      userId,
-    },
+export async function getUserSessions(
+  userId: string,
+) {
+  console.log("USER ID =", userId);
 
-    orderBy: {
-      startedAt: "desc",
-    },
-
-    include: {
-      summary: true,
-    },
+  const sessions = await db.session.findMany({
+    take: 1,
   });
+
+  return sessions;
 }
 
 export async function getActiveSessionByUserId(userId: string) {

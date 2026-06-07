@@ -41,3 +41,5 @@ QUICK_START.md
 REFACTORING_SUMMARY.md
 STRUCTURE_CHANGES.md
 packagesapps/desktop/release/ 
+
+/generated/prisma

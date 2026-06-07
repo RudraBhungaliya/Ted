@@ -22,3 +22,12 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   // You can expose other APTs you need here.
   // ...
 })
+
+contextBridge.exposeInMainWorld("desktopControls", {
+  setClickThrough(enabled: boolean) {
+    return ipcRenderer.invoke("desktop:setClickThrough", enabled);
+  },
+  setAlwaysOnTop(enabled: boolean) {
+    return ipcRenderer.invoke("desktop:setAlwaysOnTop", enabled);
+  },
+});

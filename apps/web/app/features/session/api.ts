@@ -1,4 +1,6 @@
-const API_URL = process.env.VITE_API_URL;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
+  "http://localhost:4000";
 
   export async function getSessions() {
   const response = await fetch(`${API_URL}/api/session/user/all`, {

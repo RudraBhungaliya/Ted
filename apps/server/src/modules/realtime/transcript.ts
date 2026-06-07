@@ -2,30 +2,10 @@ import { realtimeManager } from "./manager.js";
 import { REALTIME_EVENTS } from "./events.js";
 import { streamAiResponse } from "../ai/stream.js";
 import { interruptAiStream } from "./stream.js";
-import { env } from "../../config/env.js";
 import { db } from "../../db/client.js";
-import { isInterviewQuestion, isDuplicateQuestion } from "../ai/detector.js";
+import { isDuplicateQuestion } from "../ai/detector.js";
 import { analyzeAnswer } from "../analytics/service.js";
 import { saveTranscript } from "../transcript/service.js";
-
-const AI_RESPONSE_DEBOUNCE_MS = Number(env.AI_RESPONSE_DEBOUNCE_MS);
-
-const responseTimers = new Map<string, NodeJS.Timeout>();
-
-function scheduleAiResponse(sessionId: string) {
-  const existingTimer = responseTimers.get(sessionId);
-
-  if (existingTimer) {
-    clearTimeout(existingTimer);
-  }
-
-  const timer = setTimeout(() => {
-    responseTimers.delete(sessionId);
-    void emitSpeechFinal(sessionId);
-  }, AI_RESPONSE_DEBOUNCE_MS);
-
-  responseTimers.set(sessionId, timer);
-}
 
 export function emitPartialTranscript(sessionId: string, text: string) {
   if (realtimeManager.isAiStreaming(sessionId)) {
@@ -69,19 +49,11 @@ export async function emitFinalTranscript(sessionId: string, text: string) {
     }),
   );
 
-  scheduleAiResponse(sessionId);
+  void emitSpeechFinal(sessionId);
 }
 
 export async function emitSpeechFinal(sessionId: string) {
-  const pendingTimer = responseTimers.get(sessionId);
-
-  if (pendingTimer) {
-    clearTimeout(pendingTimer);
-    responseTimers.delete(sessionId);
-  }
-
   if (realtimeManager.isAiStreaming(sessionId)) {
-    scheduleAiResponse(sessionId);
     return;
   }
 
@@ -92,12 +64,6 @@ export async function emitSpeechFinal(sessionId: string) {
   }
 
   await saveTranscript(sessionId, "User", "USER", committed);
-
-  if (!isInterviewQuestion(committed)) {
-    console.log("Ignored non-question:", committed);
-
-    return;
-  }
 
   if (isDuplicateQuestion(sessionId, committed)) {
     console.log("Duplicate question ignored:", committed);

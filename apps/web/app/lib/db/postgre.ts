@@ -7,6 +7,7 @@ export interface Session {
     startTime: number;
     endTime?: number;
     status: 'running' | 'completed';
+    mode?: 'INTERVIEW' | 'MEETING';
 }
 
 interface ReflexDBSchema extends DBSchema {

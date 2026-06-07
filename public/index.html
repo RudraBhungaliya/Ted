@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ted – Interview & Meeting Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Mode selection overlay -->
+  <div id="modeOverlay" class="overlay">
+    <div class="modal">
+      <h1>Select Session Mode</h1>
+      <button id="interviewBtn" class="modeBtn">Interview</button>
+      <button id="meetingBtn" class="modeBtn">Meeting</button>
+    </div>
+  </div>
+
+  <!-- Draggable panel (Ted) -->
+  <div id="tedPanel" class="panel hidden">
+    <div class="panel-header" id="panelHeader">
+      <span>Ted Assistant</span>
+      <button id="closePanel" class="closeBtn">✕</button>
+    </div>
+    <div class="panel-body" id="panelBody">
+      <div class="tabs">
+        <button class="tab active" data-tab="chat">Chat</button>
+        <button class="tab" data-tab="assist">Assist</button>
+        <button class="tab" data-tab="summary">Summary</button>
+      </div>
+      <div class="tab-content" id="chatTab">
+        <div id="chatLog" class="log"></div>
+        <input id="chatInput" type="text" placeholder="Type a message..." />
+        <button id="sendChat" class="sendBtn">Send</button>
+      </div>
+      <div class="tab-content hidden" id="assistTab">
+        <div id="assistOutput" class="log"></div>
+      </div>
+      <div class="tab-content hidden" id="summaryTab">
+        <pre id="summaryOutput"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

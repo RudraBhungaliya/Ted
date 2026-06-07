@@ -32,5 +32,6 @@ export type SessionState = {
     aiStreaming: boolean;
     connected : boolean;
     mode: "interview" | "meeting";
+    screenContext: string;
 };
 

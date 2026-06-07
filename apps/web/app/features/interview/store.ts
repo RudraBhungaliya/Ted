@@ -19,6 +19,7 @@ type InterviewState = {
   history: HistoryTurn[];
   sessionMode: "interview" | "meeting";
   screenAssistEnabled: boolean;
+  screenAnalysis: string;
 
   start: (sessionId: string) => void;
 
@@ -50,6 +51,8 @@ type InterviewState = {
 
   setScreenAssistEnabled: (enabled: boolean) => void;
 
+  setScreenAnalysis: (analysis: string) => void;
+
   clear: () => void;
 };
 
@@ -66,6 +69,7 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   history: [],
   sessionMode: "interview",
   screenAssistEnabled: false,
+  screenAnalysis: "",
 
   start: (sessionId: string) =>
     set({
@@ -155,6 +159,11 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       screenAssistEnabled,
     }),
 
+  setScreenAnalysis: (screenAnalysis) =>
+    set({
+      screenAnalysis,
+    }),
+
   clear: () =>
     set({
       partialTranscript: "",
@@ -169,9 +178,9 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
       history: [],
 
-      sessionMode: "interview",
-
       screenAssistEnabled: false,
+
+      screenAnalysis: "",
     }),
 }));
 
@@ -209,6 +218,7 @@ if (typeof window !== "undefined") {
         history: state.history,
         sessionMode: state.sessionMode,
         screenAssistEnabled: state.screenAssistEnabled,
+        screenAnalysis: state.screenAnalysis,
       },
     });
   });

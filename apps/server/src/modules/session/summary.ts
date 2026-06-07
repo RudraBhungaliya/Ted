@@ -11,10 +11,9 @@ export async function generateSessionSummary(sessionId: string) {
       where: { id: sessionId },
       include: {
         transcripts: {
-          orderBy: { createdAt: "asc" },
-        },
-        aiMessages: {
-          orderBy: { createdAt: "asc" },
+          orderBy: {
+            createdAt: "asc",
+          },
         },
       },
     });
@@ -161,9 +160,7 @@ Return ONLY valid JSON.
       },
     });
 
-    console.log(
-      `Generated and stored interview summary for session: ${sessionId}`,
-    );
+    console.log(`Generated summary for session: ${sessionId}`);
   } catch (error) {
     console.error("Failed to generate session summary:", error);
     // Fallback summary on failure so we don't crash

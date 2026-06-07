@@ -23,6 +23,7 @@ export async function streamAiResponse(
   try {
     const sessionState = realtimeManager.getSession(sessionId);
     const mode = sessionState?.mode ?? "interview";
+    const screenContext = sessionState?.screenContext ?? "";
 
     startAiStream(sessionId);
 
@@ -30,7 +31,7 @@ export async function streamAiResponse(
     let receivedTokens = false;
 
     const streamPromise = streamAiProvider(
-      buildMessages(turns, mode),
+      buildMessages(turns, mode, screenContext),
 
       (token) => {
         receivedTokens = true;

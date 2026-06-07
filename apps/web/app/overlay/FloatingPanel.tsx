@@ -4,6 +4,7 @@ import { ReactNode, useState, useEffect, useRef } from "react";
 import { useInterviewStore } from "../features/interview/store";
 import { X, EyeOff, Maximize2, Sparkles, Zap, Briefcase, Coffee, Monitor } from "lucide-react";
 import TranscriptView from "../components/ui/TranscriptView";
+import { startScreenAnalysisLoop, type ScreenCaptureLoop } from "../lib/screen/capture";
 
 type Props = {
   children?: ReactNode;
@@ -23,9 +24,13 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
   const partialTranscript = useInterviewStore((state) => state.partialTranscript);
   const aiResponse = useInterviewStore((state) => state.aiResponse);
   const sessionMode = useInterviewStore((state) => state.sessionMode);
+  const screenAssistEnabled = useInterviewStore((state) => state.screenAssistEnabled);
+  const screenAnalysis = useInterviewStore((state) => state.screenAnalysis);
+  const realtimeSessionId = useInterviewStore((state) => state.realtimeSessionId);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
+  const transcriptSnapshotRef = useRef("");
 
   // Handle scrolling to detect if the user has scrolled up
   const handleScroll = () => {
@@ -44,6 +49,16 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
 
     container.scrollTop = container.scrollHeight;
   }, [history, finalTranscript, partialTranscript, aiResponse]);
+
+  useEffect(() => {
+    transcriptSnapshotRef.current = [
+      ...history.map((turn) => `${turn.role}: ${turn.text}`),
+      finalTranscript ? `final: ${finalTranscript}` : "",
+      partialTranscript ? `partial: ${partialTranscript}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }, [history, finalTranscript, partialTranscript]);
 
   // Reset auto-scroll and force scroll to bottom on recording/session start
   useEffect(() => {
@@ -65,6 +80,70 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
   useEffect(() => {
     setIsIframe(typeof window !== "undefined" && window.parent !== window);
   }, []);
+
+  useEffect(() => {
+    const desktopControls = (window as Window & {
+      desktopControls?: {
+        setClickThrough?: (enabled: boolean) => void;
+      };
+    }).desktopControls;
+
+    desktopControls?.setClickThrough?.(isStealth);
+  }, [isStealth]);
+
+  const screenLoopRef = useRef<ScreenCaptureLoop | null>(null);
+
+  useEffect(() => {
+    if (!isRecording || !screenAssistEnabled || !realtimeSessionId) {
+      screenLoopRef.current?.stop();
+      screenLoopRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+
+    void startScreenAnalysisLoop({
+      sessionId: realtimeSessionId,
+      getTranscript: () => transcriptSnapshotRef.current,
+      onAnalysis: (analysis) => {
+        if (cancelled) {
+          return;
+        }
+
+        const text = [analysis.headline, analysis.analysis, analysis.suggestedAction]
+          .filter(Boolean)
+          .join("\n");
+
+        useInterviewStore.getState().setScreenAnalysis(text);
+      },
+      onError: (message) => {
+        if (!cancelled) {
+          useInterviewStore.getState().setError(message);
+        }
+      },
+    })
+      .then((loop) => {
+        if (cancelled) {
+          loop.stop();
+          return;
+        }
+
+        screenLoopRef.current = loop;
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          useInterviewStore.getState().setError(
+            error instanceof Error ? error.message : "Screen assist failed.",
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      screenLoopRef.current?.stop();
+      screenLoopRef.current = null;
+    };
+  }, [isRecording, screenAssistEnabled, realtimeSessionId]);
 
   // Draggable and Resizable state
   const panelRef = useRef<HTMLDivElement>(null);
@@ -254,6 +333,11 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
     }
   };
 
+  const toggleScreenAssist = () => {
+    useInterviewStore.getState().setScreenAnalysis("");
+    useInterviewStore.getState().setScreenAssistEnabled(!screenAssistEnabled);
+  };
+
 
   if (!isRecording) {
     return (
@@ -273,7 +357,7 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
         >
           <button
             onClick={onStart}
-            className="flex items-center gap-2.5 px-4.5 py-2.5 rounded-full bg-neutral-900/90 backdrop-blur-xl border border-white/[0.08] text-zinc-200 hover:text-white hover:border-indigo-500/50 hover:bg-neutral-950 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-indigo-500/10 cursor-pointer transition-all hover:scale-105 active:scale-95 group font-semibold text-xs tracking-wide whitespace-nowrap"
+            className="flex items-center gap-2.5 px-4.5 py-2.5 rounded-full bg-neutral-900/90 backdrop-blur-xl border border-white/8 text-zinc-200 hover:text-white hover:border-indigo-500/50 hover:bg-neutral-950 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-indigo-500/10 cursor-pointer transition-all hover:scale-105 active:scale-95 group font-semibold text-xs tracking-wide whitespace-nowrap"
           >
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
@@ -332,7 +416,7 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
           ${
             isStealth 
               ? "bg-neutral-950/40 backdrop-blur-md border-white/5 opacity-50 hover:opacity-100 shadow-xl" 
-              : `bg-neutral-950/75 backdrop-blur-3xl border-white/[0.08] shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]
+              : `bg-neutral-950/75 backdrop-blur-3xl border-white/8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]
                  ${isAiResponding 
                    ? "shadow-indigo-500/10 border-indigo-500/35 ring-1 ring-indigo-500/20" 
                    : "shadow-black/50"
@@ -363,7 +447,7 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
         {/* Glow Effects (only in standard mode) */}
         {!isStealth && (
           <>
-            <div className={`absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b ${isAiResponding ? 'from-indigo-500/10' : 'from-indigo-600/5'} to-transparent blur-3xl pointer-events-none transition-all duration-700`} />
+            <div className={`absolute top-0 left-0 w-full h-1/2 bg-linear-to-b ${isAiResponding ? 'from-indigo-500/10' : 'from-indigo-600/5'} to-transparent blur-3xl pointer-events-none transition-all duration-700`} />
             <div className={`absolute bottom-0 right-0 w-32 h-32 ${isAiResponding ? 'bg-indigo-500/5' : 'bg-purple-500/5'} rounded-full blur-3xl pointer-events-none transition-all duration-700`} />
           </>
         )}
@@ -385,13 +469,13 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
 
             {/* Listening Wave & Status Info */}
             <div className="flex items-center gap-2.5">
-              <div className="flex items-end gap-[3px] h-[16px] px-1">
-                <div className={`w-[3px] rounded-full bg-indigo-400 voice-bar voice-bar-1 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-[3px] rounded-full bg-indigo-400 voice-bar voice-bar-2 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-[3px] rounded-full bg-indigo-400 voice-bar voice-bar-3 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-[3px] rounded-full bg-purple-400 voice-bar voice-bar-4 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-[3px] rounded-full bg-purple-400 voice-bar voice-bar-5 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-[3px] rounded-full bg-pink-400 voice-bar voice-bar-6 ${!isConnected ? 'paused' : ''}`} />
+              <div className="flex items-end gap-0.75 h-4 px-1">
+                <div className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-1 ${!isConnected ? 'paused' : ''}`} />
+                <div className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-2 ${!isConnected ? 'paused' : ''}`} />
+                <div className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-3 ${!isConnected ? 'paused' : ''}`} />
+                <div className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-4 ${!isConnected ? 'paused' : ''}`} />
+                <div className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-5 ${!isConnected ? 'paused' : ''}`} />
+                <div className={`w-0.75 rounded-full bg-pink-400 voice-bar voice-bar-6 ${!isConnected ? 'paused' : ''}`} />
               </div>
 
               <div className="flex flex-col">
@@ -436,7 +520,7 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
 
           {/* Control Bar (Mode Select & Screen Assist) - Standard Mode Only */}
           {!isStealth && (
-            <div className="flex items-center justify-between gap-3 p-1.5 bg-white/[0.02] border border-white/5 rounded-xl mb-3">
+            <div className="flex items-center justify-between gap-3 p-1.5 bg-white/2 border border-white/5 rounded-xl mb-3">
               {/* Segmented Mode Selector */}
               <div className="flex bg-neutral-900/60 p-0.5 rounded-lg border border-white/5">
                 <button
@@ -466,20 +550,33 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
               {/* Screen Assist (Placeholder - Coming Soon) */}
               <div className="relative group">
                 <button
-                  disabled
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wide text-zinc-500/70 border border-zinc-800/40 bg-zinc-950/20 cursor-not-allowed transition-all opacity-60"
+                    onClick={toggleScreenAssist}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wide border transition-all ${
+                    screenAssistEnabled
+                      ? "text-indigo-200 border-indigo-500/30 bg-indigo-500/10 cursor-pointer"
+                      : "text-zinc-300 border-zinc-800/40 bg-zinc-950/20 cursor-pointer"
+                  }`}
                 >
                   <Monitor className="w-3 h-3" />
-                  Screen Assist
-                  <span className="bg-zinc-800 text-[8px] text-zinc-400 px-1 rounded uppercase tracking-wider scale-90 border border-zinc-700/50">Soon</span>
+                    {screenAssistEnabled ? "Screen Assist On" : "Screen Assist"}
+                    <span className="bg-zinc-800 text-[8px] text-zinc-400 px-1 rounded uppercase tracking-wider scale-90 border border-zinc-700/50">
+                      {screenAssistEnabled ? "Live" : "Off"}
+                    </span>
                 </button>
                 {/* Micro tooltip */}
                 <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover:block z-30 bg-neutral-900 border border-white/10 text-zinc-300 text-[9px] px-2 py-1 rounded shadow-md whitespace-nowrap">
-                  Read screen text instead of audio (Coming Soon)
+                    Capture the screen and send frames to Gemini
                 </div>
               </div>
             </div>
           )}
+
+            {screenAssistEnabled && screenAnalysis && !isStealth && (
+              <div className="mb-3 rounded-xl border border-indigo-500/15 bg-indigo-500/5 p-3 text-xs text-zinc-300">
+                <div className="mb-1 font-semibold text-indigo-300">Screen Insight</div>
+                <div className="whitespace-pre-line text-zinc-400">{screenAnalysis}</div>
+              </div>
+            )}
 
           {/* Transcript Area */}
           <div 
@@ -507,19 +604,19 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
             {/* Right edge resizer */}
             <div
               onMouseDown={(e) => handleResizeMouseDown(e, "right")}
-              className="absolute top-0 right-0 bottom-4 w-1.5 cursor-ew-resize hover:bg-indigo-500/10 active:bg-indigo-500/30 z-[100] transition-colors"
+              className="absolute top-0 right-0 bottom-4 w-1.5 cursor-ew-resize hover:bg-indigo-500/10 active:bg-indigo-500/30 z-100 transition-colors"
               title="Drag to resize width"
             />
             {/* Bottom edge resizer */}
             <div
               onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
-              className="absolute bottom-0 left-0 right-4 h-1.5 cursor-ns-resize hover:bg-indigo-500/10 active:bg-indigo-500/30 z-[100] transition-colors"
+              className="absolute bottom-0 left-0 right-4 h-1.5 cursor-ns-resize hover:bg-indigo-500/10 active:bg-indigo-500/30 z-100 transition-colors"
               title="Drag to resize height"
             />
             {/* Bottom-right diagonal corner resizer */}
             <div
               onMouseDown={(e) => handleResizeMouseDown(e, "both")}
-              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 z-[101] group/resize hover:bg-indigo-500/20 active:bg-indigo-500/40 rounded-br-2xl transition-colors"
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 z-101 group/resize hover:bg-indigo-500/20 active:bg-indigo-500/40 rounded-br-2xl transition-colors"
               title="Drag to resize size"
             >
               <svg

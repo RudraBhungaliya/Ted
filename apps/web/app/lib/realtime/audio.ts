@@ -1,3 +1,5 @@
+import { acquireScreenShareStream, releaseScreenShareStream } from "../../../lib/screen/capture";
+
 const TARGET_SAMPLE_RATE = 16000;
 
 export class AudioEngine {
@@ -5,39 +7,61 @@ export class AudioEngine {
 
   private processor: ScriptProcessorNode | null = null;
 
-  private source: MediaStreamAudioSourceNode | null = null;
+  private micSource: MediaStreamAudioSourceNode | null = null;
 
-  private mediaStream: MediaStream | null = null;
+  private systemSource: MediaStreamAudioSourceNode | null = null;
+
+  private micStream: MediaStream | null = null;
+
+  private systemStream: MediaStream | null = null;
 
   private silentGain: GainNode | null = null;
 
   async start(onChunk: (audio: Uint8Array) => void): Promise<void> {
     try{
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
       });
 
+      this.systemStream = await acquireScreenShareStream(true);
+
       console.log("Mic Success");
-      console.log(this.mediaStream.getAudioTracks());
+      console.log(this.micStream.getAudioTracks());
+
+      console.log("System share success");
+      console.log(this.systemStream.getAudioTracks());
     }
     catch(err){ 
-      console.error("Mic error", err);
+      console.error("Audio capture error", err);
       throw err;
     }
     
-    const audioTracks = this.mediaStream.getAudioTracks();
+    const micTracks = this.micStream.getAudioTracks();
+    const systemTracks = this.systemStream.getAudioTracks();
 
-    if (audioTracks.length === 0) {
+    if (micTracks.length === 0) {
+      throw new Error("No microphone input detected.");
+    }
+
+    if (systemTracks.length === 0) {
       throw new Error(
-        "No system audio detected. Select a browser tab and enable 'Share tab audio'.",
+        "No system audio detected. Select a screen, window, or tab and enable audio sharing.",
       );
     }
 
     this.audioContext = new AudioContext();
 
+    await this.audioContext.resume();
+
     const inputSampleRate = this.audioContext.sampleRate;
 
-    this.source = this.audioContext.createMediaStreamSource(this.mediaStream);
+    this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
+
+    this.systemSource = this.audioContext.createMediaStreamSource(this.systemStream);
 
     this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
 
@@ -57,7 +81,9 @@ export class AudioEngine {
       onChunk(new Uint8Array(this.float32ToPCM16(resampled)));
     };
 
-    this.source.connect(this.processor);
+    this.micSource.connect(this.processor);
+
+    this.systemSource.connect(this.processor);
 
     this.processor.connect(this.silentGain);
 
@@ -67,21 +93,29 @@ export class AudioEngine {
   stop(): void {
     this.processor?.disconnect();
 
-    this.source?.disconnect();
+    this.micSource?.disconnect();
+
+    this.systemSource?.disconnect();
 
     this.silentGain?.disconnect();
 
-    this.mediaStream?.getTracks().forEach((track) => track.stop());
+    this.micStream?.getTracks().forEach((track) => track.stop());
+
+    releaseScreenShareStream();
 
     void this.audioContext?.close();
 
     this.processor = null;
 
-    this.source = null;
+    this.micSource = null;
+
+    this.systemSource = null;
 
     this.silentGain = null;
 
-    this.mediaStream = null;
+    this.micStream = null;
+
+    this.systemStream = null;
 
     this.audioContext = null;
   }

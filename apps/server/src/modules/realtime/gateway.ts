@@ -64,21 +64,29 @@ export async function realtimeGateway(app: FastifyInstance) {
               if (pendingTimer) {
                 clearTimeout(pendingTimer);
                 disconnectTimers.delete(payload.sessionId);
-                console.log("Graceful reconnect within window:", payload.sessionId);
+                console.log(
+                  "Graceful reconnect within window:",
+                  payload.sessionId,
+                );
               }
 
               // Update session mode in DB
               try {
                 await db.session.update({
                   where: { id: payload.sessionId },
-                  data: { mode },
+                  data: {
+                    mode: mode === "meeting" ? "MEETING" : "INTERVIEW",
+                  },
                 });
               } catch (dbErr) {
                 console.error("Failed to update session mode in DB:", dbErr);
               }
 
               // Restore session state from DB if needed
-              const restored = await realtimeManager.restoreSession(payload.sessionId, mode);
+              const restored = await realtimeManager.restoreSession(
+                payload.sessionId,
+                mode,
+              );
               if (!restored) {
                 realtimeManager.createSession(payload.sessionId, mode);
               }
@@ -97,10 +105,18 @@ export async function realtimeGateway(app: FastifyInstance) {
                 }),
               );
 
-              console.log("Session started/resumed:", payload.sessionId, "Mode:", mode);
+              console.log(
+                "Session started/resumed:",
+                payload.sessionId,
+                "Mode:",
+                mode,
+              );
             }
 
-            if (event === REALTIME_EVENTS.session.updateMode && activeSessionId) {
+            if (
+              event === REALTIME_EVENTS.session.updateMode &&
+              activeSessionId
+            ) {
               const mode = payload.mode === "meeting" ? "meeting" : "interview";
               const sessionState = realtimeManager.getSession(activeSessionId);
               if (sessionState) {
@@ -109,11 +125,19 @@ export async function realtimeGateway(app: FastifyInstance) {
               try {
                 await db.session.update({
                   where: { id: activeSessionId },
-                  data: { mode },
+                  data: {
+                    mode: mode === "meeting" ? "MEETING" : "INTERVIEW",
+                  },
                 });
-                console.log(`Updated session ${activeSessionId} mode to:`, mode);
+                console.log(
+                  `Updated session ${activeSessionId} mode to:`,
+                  mode,
+                );
               } catch (dbErr) {
-                console.error("Failed to update mode in DB on updateMode event:", dbErr);
+                console.error(
+                  "Failed to update mode in DB on updateMode event:",
+                  dbErr,
+                );
               }
             }
 
@@ -157,7 +181,10 @@ export async function realtimeGateway(app: FastifyInstance) {
           const sessionId = activeSessionId;
           const timer = setTimeout(() => {
             disconnectTimers.delete(sessionId);
-            console.log("Grace period expired, cleaning up session:", sessionId);
+            console.log(
+              "Grace period expired, cleaning up session:",
+              sessionId,
+            );
             closeDeepgramSession(sessionId);
             realtimeManager.removeSession(sessionId);
           }, 15000);
@@ -168,4 +195,3 @@ export async function realtimeGateway(app: FastifyInstance) {
     },
   );
 }
-

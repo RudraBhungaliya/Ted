@@ -1,13 +1,17 @@
 import { RealtimeClient } from "../../lib/realtime/client";
 import { useInterviewStore } from "./store";
 
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
+  "http://localhost:4000";
+
 // Module-level singleton so start and stop always reference the same client
 let activeClient: RealtimeClient | null = null;
 
 async function resumeSession(sessionId: string) {
   try {
     const response = await fetch(
-      `http://localhost:4000/api/session/${sessionId}`,
+      `${API_URL}/api/session/${sessionId}`,
       {
         credentials: "include",
       },
@@ -43,7 +47,7 @@ async function resumeSession(sessionId: string) {
     if (session.mode) {
       useInterviewStore
         .getState()
-        .setSessionMode(session.mode === "meeting" ? "meeting" : "interview");
+        .setSessionMode(session.mode === "MEETING" ? "meeting" : "interview");
     }
     useInterviewStore.getState().start(sessionId);
 
@@ -109,36 +113,22 @@ async function startInterview() {
     return;
   }
   try {
-    const micStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-    });
-
-    micStream.getTracks().forEach((track) => track.stop());
-
-    try {
-      console.log("Requesting system audio...");
-
-      const systemStream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
-        audio: true,
-      });
-
-      console.log("System stream acquired");
-      console.log(systemStream.getTracks());
-
-      systemStream.getTracks().forEach((track) => track.stop());
-    } catch (err) {
-      console.error("DISPLAY MEDIA ERROR", err);
-      throw err;
-    }
+    const currentMode = useInterviewStore.getState().sessionMode;
 
     const response = await fetch(
-      "http://localhost:4000/api/session/create",
-
+      `${API_URL}/api/session/create`,
       {
         method: "POST",
 
         credentials: "include",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          mode: currentMode === "meeting" ? "MEETING" : "INTERVIEW",
+        }),
       },
     );
 

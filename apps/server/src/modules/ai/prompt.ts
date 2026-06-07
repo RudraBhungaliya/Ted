@@ -37,16 +37,30 @@ Rules:
 `;
 }
 
-export function buildMessages(turns: ConversationTurn[], mode: "interview" | "meeting" = "interview") {
+export function buildMessages(
+  turns: ConversationTurn[],
+  mode: "interview" | "meeting" = "interview",
+  screenContext = "",
+) {
   const maxTurns = Math.max(1, Number(env.AI_MAX_HISTORY_TURNS));
   const recentTurns = turns.slice(-maxTurns);
 
-  return [
+  const messages = [
     {
       role: "system",
       content: buildSystemPrompt(mode),
     },
+  ];
 
+  if (screenContext.trim()) {
+    messages.push({
+      role: "system",
+      content: `Current screen context:\n${screenContext.trim()}`,
+    });
+  }
+
+  return [
+    ...messages,
     ...recentTurns.map((turn) => ({
       role: turn.role,
 

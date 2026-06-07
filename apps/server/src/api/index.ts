@@ -6,6 +6,8 @@ import { sessionRoutes } from "../modules/session/session.route.js";
 
 import { analyticsRoutes } from "../modules/analytics/analytics.route.js";
 
+import { screenRoutes } from "../modules/screen/screen.route.js";
+
 import { realtimeGateway } from "../modules/realtime/gateway.js";
 
 export async function registerRoutes(app: FastifyInstance) {
@@ -33,6 +35,10 @@ export async function registerRoutes(app: FastifyInstance) {
 
   await app.register(analyticsRoutes, {
     prefix: "/api/analytics",
+  });
+
+  await app.register(screenRoutes, {
+    prefix: "/api/screen",
   });
 
   await realtimeGateway(app);
