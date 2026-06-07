@@ -43,13 +43,28 @@
   </style>
 </head>
 <body>
-<div id="overlayPanel">
+  <div id="overlayPanel">
+    <!-- Session Mode Modal -->
+    <div id="sessionModeModal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Select Session Mode</h2>
+        <p>Please choose the type of session you want to start.</p>
+        <button id="modeInterview" class="mode-btn">Interview</button>
+        <button id="modeMeeting" class="mode-btn">Meeting</button>
+      </div>
+    </div>
   <div id="overlayHeader">
     <span>Ted Assistant</span>
     <button id="closeOverlay">✕</button>
+    <button id="startTedBtn" class="mode-btn">Start Ted</button>
   </div>
   <div id="overlayBody">
-    <div class="tabs">
+      <!-- Session List -->
+      <div id="sessionList" class="session-list hidden">
+        <h3>Previous Sessions</h3>
+        <ul id="sessionsUl"></ul>
+      </div>
+      <div class="tabs">
       <button class="tab active" data-tab="chat">Chat</button>
       <button class="tab" data-tab="assist">Assist</button>
       <button class="tab" data-tab="summary">Summary</button>

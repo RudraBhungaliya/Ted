@@ -10,12 +10,9 @@ let activeClient: RealtimeClient | null = null;
 
 async function resumeSession(sessionId: string) {
   try {
-    const response = await fetch(
-      `${API_URL}/api/session/${sessionId}`,
-      {
-        credentials: "include",
-      },
-    );
+    const response = await fetch(`${API_URL}/api/session/${sessionId}`, {
+      credentials: "include",
+    });
 
     if (!response.ok) {
       throw new Error("Failed to fetch active session details");
@@ -115,22 +112,19 @@ async function startInterview() {
   try {
     const currentMode = useInterviewStore.getState().sessionMode;
 
-    const response = await fetch(
-      `${API_URL}/api/session/create`,
-      {
-        method: "POST",
+    const response = await fetch(`${API_URL}/api/session/create`, {
+      method: "POST",
 
-        credentials: "include",
+      credentials: "include",
 
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          mode: currentMode === "meeting" ? "MEETING" : "INTERVIEW",
-        }),
+      headers: {
+        "Content-Type": "application/json",
       },
-    );
+
+      body: JSON.stringify({
+        mode: currentMode === "meeting" ? "MEETING" : "INTERVIEW",
+      }),
+    });
 
     if (!response.ok) {
       throw new Error("Failed to create session.");
@@ -279,10 +273,11 @@ export const useInterview = () => {
   // }, []);
 
   const handleSetMode = (mode: "interview" | "meeting") => {
-    useInterviewStore.getState().setSessionMode(mode);
-    if (activeClient) {
-      activeClient.updateMode(mode);
+    if (useInterviewStore.getState().isRecording) {
+      return;
     }
+
+    useInterviewStore.getState().setSessionMode(mode);
   };
 
   return {

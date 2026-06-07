@@ -1,7 +1,4 @@
-import {
-  createClient,
-  LiveTranscriptionEvents,
-} from "@deepgram/sdk";
+import { createClient, LiveTranscriptionEvents } from "@deepgram/sdk";
 
 import { env } from "../../config/env.js";
 
@@ -12,6 +9,8 @@ import {
 } from "./transcript.js";
 
 import { realtimeManager } from "./manager.js";
+import { saveTranscript } from "../transcript/service.js";
+import { REALTIME_EVENTS } from "./events.js";
 
 const deepgram = createClient(env.DEEPGRAM_API_KEY);
 
@@ -37,6 +36,8 @@ export function initializeDeepgramSession(sessionId: string) {
     endpointing: Number(env.DEEPGRAM_ENDPOINTING_MS),
     encoding: "linear16",
     sample_rate: 16000,
+    channels: 2,
+    multichannel: true,
   });
 
   const sessionState: DeepgramSession = {
@@ -57,24 +58,78 @@ export function initializeDeepgramSession(sessionId: string) {
     }
   });
 
-  connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
-    const text = data.channel?.alternatives?.[0]?.transcript;
+  connection.on(LiveTranscriptionEvents.Transcript, async (data: any) => {
+    const channelAlternatives = data.channel?.alternatives?.[0];
+    const text = channelAlternatives?.transcript;
+    const isFinal = data.is_final;
+    const channelIndex = data.channel_index ?? 0;
 
     if (data.speech_final) {
       void emitSpeechFinal(sessionId);
     }
 
-    if (!text) {
+    if (!text || !text.trim()) {
       return;
     }
 
-    if (data.is_final) {
-      emitFinalTranscript(sessionId, text);
+    const currentSession = realtimeManager.getSession(sessionId);
+    const isMeetingMode = currentSession?.mode === "meeting";
+    const socket = realtimeManager.getSocket(sessionId);
 
-      return;
+    if (channelIndex === 0) {
+      // ==========================================
+      // CHANNEL 0: YOUR MICROPHONE (USER)
+      // ==========================================
+      if (isFinal) {
+        await saveTranscript(sessionId, "User", "USER", text);
+      }
+
+      // Stream to panel layout ONLY when running a meeting session
+      if (isMeetingMode && socket) {
+        socket.send(
+          JSON.stringify({
+            event: isFinal
+              ? REALTIME_EVENTS.transcript.final
+              : REALTIME_EVENTS.transcript.partial,
+            payload: { text: `User: ${text}` },
+          }),
+        );
+      }
+    } else if (channelIndex === 1) {
+      // ==========================================
+      // CHANNEL 1: MEETING STREAM (INTERVIEWER)
+      // ==========================================
+      if (isFinal) {
+        await saveTranscript(sessionId, "Interviewer", "PARTICIPANT", text);
+
+        if (!isMeetingMode) {
+          // Uses your native stream system to trigger AI evaluation loops safely
+          void emitFinalTranscript(sessionId, text);
+          return;
+        }
+      }
+
+      // If in meeting mode or dealing with partial transcripts, use default frame pathways
+      if (isMeetingMode) {
+        if (socket) {
+          socket.send(
+            JSON.stringify({
+              event: isFinal
+                ? REALTIME_EVENTS.transcript.final
+                : REALTIME_EVENTS.transcript.partial,
+              payload: { text: `Interviewer: ${text}` },
+            }),
+          );
+        }
+      } else {
+        // Standard Interview Mode streaming back up to the overlay UI panel box
+        if (isFinal) {
+          void emitFinalTranscript(sessionId, text);
+        } else {
+          void emitPartialTranscript(sessionId, text);
+        }
+      }
     }
-
-    emitPartialTranscript(sessionId, text);
   });
 
   connection.on(LiveTranscriptionEvents.Error, (error: unknown) => {
@@ -85,10 +140,12 @@ export function initializeDeepgramSession(sessionId: string) {
     console.log("Deepgram closed:", sessionId);
     sessionState.isOpen = false;
 
-    // Auto-reconnect if session is still active
     const session = realtimeManager.getSession(sessionId);
     if (session) {
-      console.log("Deepgram disconnected unexpectedly. Reconnecting for session:", sessionId);
+      console.log(
+        "Deepgram disconnected unexpectedly. Reconnecting for session:",
+        sessionId,
+      );
       connections.delete(sessionId);
       setTimeout(() => {
         if (realtimeManager.getSession(sessionId)) {

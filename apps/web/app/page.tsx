@@ -1,21 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
+import { useRouter } from "next/navigation";
 import { ArrowUpRight, Activity, Zap, Mic } from "lucide-react";
-
 import Overlay from "./overlay/Overlay";
-
 import { useInterview } from "./features/interview/useInterview";
-
 import { useInterviewStore } from "./features/interview/store";
-
 import { useSessions } from "./features/interview/useSessions";
 
 export default function Home() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [showModeModal, setShowModeModal] = useState(false);
 
   useEffect(() => {
     // Auth checks bypassed on frontend for development testing
@@ -25,7 +22,10 @@ export default function Home() {
 
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:4000/api/auth/logout", {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
+        "http://localhost:4000";
+      await fetch(`${apiUrl}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -36,11 +36,8 @@ export default function Home() {
   };
 
   const { handleStart, handleSetMode } = useInterview();
-
   const isRecording = useInterviewStore((s) => s.isRecording);
-
-  const sessionMode = useInterviewStore((s) => s.sessionMode);
-
+  const error = useInterviewStore((s) => s.error);
   const { groupedSessions, isLoading } = useSessions();
 
   if (authLoading) {
@@ -59,14 +56,14 @@ export default function Home() {
   return (
     <main
       className="
-      min-h-screen
-      bg-[#090D1A]
-      text-zinc-100
-      font-sans
-      selection:bg-indigo-500/20
-      relative
-      overflow-hidden
-    "
+        min-h-screen
+        bg-[#090D1A]
+        text-zinc-100
+        font-sans
+        selection:bg-indigo-500/20
+        relative
+        overflow-hidden
+      "
     >
       {/* Decorative premium background grid/glow */}
       <div className="absolute inset-0 bg-[radial-gradient(#1e1b4b_1.2px,transparent_1.2px)] bg-size-[24px_24px] opacity-15 pointer-events-none" />
@@ -145,14 +142,7 @@ export default function Home() {
               "
             >
               <span>
-                Low-latency mode for{" "}
-                <strong
-                  className="
-                    text-white
-                  "
-                >
-                  Ted
-                </strong>
+                Low-latency mode for <strong className="text-white">Ted</strong>
               </span>
 
               <ArrowUpRight
@@ -169,7 +159,7 @@ export default function Home() {
 
           <div
             className="
-              max-w-250
+              max-w-2xl
               mx-auto
               px-6
               relative
@@ -184,13 +174,7 @@ export default function Home() {
                 mb-10
               "
             >
-              <div
-                className="
-                  flex
-                  items-center
-                  gap-5
-                "
-              >
+              <div className="flex items-center gap-5">
                 <div
                   className="
                     flex
@@ -213,24 +197,10 @@ export default function Home() {
                       shadow-indigo-500/30
                     "
                   >
-                    <Zap
-                      className="
-                        text-white
-                        w-5
-                        h-5
-                        fill-white/20
-                      "
-                    />
+                    <Zap className="text-white w-5 h-5 fill-white/20" />
                   </div>
 
-                  <h1
-                    className="
-                      text-3xl
-                      font-bold
-                      text-white
-                      tracking-tight
-                    "
-                  >
+                  <h1 className="text-3xl font-bold text-white tracking-tight">
                     Ted
                   </h1>
                 </div>
@@ -248,93 +218,13 @@ export default function Home() {
                     shadow-sm
                   "
                 >
-                  <Activity
-                    className="
-                      w-4
-                      h-4
-                    "
-                  />
+                  <Activity className="w-4 h-4" />
                 </button>
-
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                    bg-white/5
-                    px-4
-                    py-2
-                    rounded-xl
-                    ml-2
-                    border
-                    border-white/10
-                    shadow-sm
-                  "
-                >
-                  <span
-                    className="
-    text-sm
-    text-zinc-300
-    font-medium
-  "
-                  >
-                    {sessionMode === "interview"
-                      ? "Interview Mode"
-                      : "Meeting Mode"}
-                  </span>
-
-                  <button
-                    onClick={() =>
-                      handleSetMode(
-                        sessionMode === "interview" ? "meeting" : "interview",
-                      )
-                    }
-                    className={`
-                      relative
-                      inline-flex
-                      h-5
-                      w-9
-                      items-center
-                      rounded-full
-                      transition-colors
-                      focus:outline-none
-                      ${
-                        sessionMode === "interview"
-                          ? "bg-indigo-600"
-                          : "bg-neutral-800"
-                      }
-                    `}
-                  >
-                    <span
-                      className={`
-                        inline-block
-                        h-4
-                        w-4
-                        transform
-                        rounded-full
-                        bg-white
-                        transition-transform
-                        ${
-                          sessionMode === "interview"
-                            ? "translate-x-4"
-                            : "translate-x-1"
-                        }
-                        shadow-sm
-                      `}
-                    />
-                  </button>
-                </div>
               </div>
 
-              <div
-                className="
-                  flex
-                  flex-col
-                  items-center
-                "
-              >
+              <div>
                 <button
-                  onClick={handleStart}
+                  onClick={() => setShowModeModal(true)}
                   className="
                     relative
                     group
@@ -371,23 +261,8 @@ export default function Home() {
                     "
                   />
 
-                  <Mic
-                    className="
-                      w-5
-                      h-5
-                      relative
-                      z-10
-                    "
-                  />
-
-                  <span
-                    className="
-                      relative
-                      z-10
-                    "
-                  >
-                    Start Ted
-                  </span>
+                  <Mic className="w-5 h-5 relative z-10" />
+                  <span className="relative z-10">Start Ted</span>
                 </button>
               </div>
             </div>
@@ -408,188 +283,91 @@ export default function Home() {
                 shadow-sm
               "
             >
-              <div
-                className="
-                  w-2
-                  h-2
-                  rounded-full
-                  bg-indigo-400
-                  animate-pulse
-                "
-              />
+              <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
               {error ??
                 "Ready for realtime microphone questions and instant text answers."}
             </div>
 
-              <div
-                className="
-                  bg-neutral-900/40
-                  backdrop-blur-xl
-                  border
-                  border-white/6
-                  rounded-2xl
-                  p-6
-                  shadow-2xl
-                  shadow-black/40
-                "
-              >
-              <h2
-                className="
-                  text-lg
-                  font-semibold
-                  text-white
-                  mb-6
-                  flex
-                  items-center
-                  gap-2
-                "
-              >
+            <div
+              className="
+                bg-neutral-900/40
+                backdrop-blur-xl
+                border
+                border-white/6
+                rounded-2xl
+                p-6
+                shadow-2xl
+                shadow-black/40
+              "
+            >
+              <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
                 Recent Sessions
-                <span
-                  className="
-                    px-2
-                    py-0.5
-                    rounded-md
-                    bg-neutral-800
-                    text-xs
-                    font-medium
-                    text-zinc-400
-                    border
-                    border-white/5
-                  "
-                >
+                <span className="px-2 py-0.5 rounded-md bg-neutral-800 text-xs font-medium text-zinc-400 border border-white/5">
                   Local DB
                 </span>
               </h2>
 
               {isLoading ? (
-                <div
-                  className="
-                      text-sm
-                      text-zinc-400
-                      text-center
-                      py-8
-                    "
-                >
+                <div className="text-sm text-zinc-400 text-center py-8 italic">
                   Loading sessions...
                 </div>
               ) : groupedSessions.length === 0 ? (
-                <div
-                  className="
-                      text-sm
-                      text-zinc-400
-                      text-center
-                      py-8
-                    "
-                >
+                <div className="text-sm text-zinc-400 text-center py-8 italic">
                   No sessions recorded yet.
                 </div>
               ) : (
                 groupedSessions.map((group, groupIdx) => (
-                  <div
-                    key={groupIdx}
-                    className="
-                          mb-8
-                          last:mb-0
-                        "
-                  >
-                    <h3
-                      className="
-                            text-xs
-                            font-bold
-                            text-zinc-500
-                            uppercase
-                            tracking-wider
-                            mb-3
-                          "
-                    >
+                  <div key={groupIdx} className="mb-8 last:mb-0">
+                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">
                       {group.date}
                     </h3>
 
-                    <div
-                      className="
-                            flex
-                            flex-col
-                            gap-2
-                          "
-                    >
+                    <div className="flex flex-col gap-2">
                       {group.items.map((item, itemIdx) => (
                         <div
-                          key={itemIdx}
+                          key={item.id || itemIdx}
+                          onClick={() => router.push(`/session/${item.id}`)}
                           className="
-                                    flex
-                                    items-center
-                                    justify-between
-                                    p-4
-                                    bg-neutral-950/45
-                                    hover:bg-neutral-800/40
-                                    border
-                                    border-white/5
-                                    rounded-xl
-                                    transition-all
-                                    cursor-pointer
-                                  "
+                            flex
+                            items-center
+                            justify-between
+                            p-4
+                            bg-neutral-950/45
+                            hover:bg-neutral-800/40
+                            border
+                            border-white/5
+                            rounded-xl
+                            transition-all
+                            cursor-pointer
+                          "
                         >
-                          <div
-                            className="
-                                      flex
-                                      items-center
-                                      gap-4
-                                    "
-                          >
+                          <div className="flex items-center gap-4">
                             <div
                               className={`
-                                        w-2
-                                        h-2
-                                        rounded-full
-                                        ${
-                                          item.status === "running"
-                                            ? "bg-green-500 animate-pulse"
-                                            : "bg-indigo-500/30"
-                                        }
-                                      `}
+                                w-2
+                                h-2
+                                rounded-full
+                                ${
+                                  item.status === "ACTIVE" ||
+                                  item.status === "running"
+                                    ? "bg-green-500 animate-pulse"
+                                    : "bg-indigo-500/30"
+                                }
+                              `}
                             />
-
-                            <span
-                              className="
-                                        text-[15px]
-                                        font-medium
-                                        text-zinc-200
-                                      "
-                            >
+                            <span className="text-[15px] font-medium text-zinc-200">
                               {item.title}
                             </span>
                           </div>
 
-                          <div
-                            className="
-                                      flex
-                                      items-center
-                                      gap-4
-                                    "
-                          >
-                            <span
-                              className="
-                                        px-2.5
-                                        py-1
-                                        rounded-md
-                                        bg-neutral-900
-                                        text-xs
-                                        font-mono
-                                        text-zinc-400
-                                        border
-                                        border-white/5
-                                      "
-                            >
+                          <div className="flex items-center gap-4">
+                            <span className="px-2 py-0.5 text-[9px] font-mono tracking-wide rounded border uppercase border-white/5 bg-neutral-900 text-zinc-400">
+                              {item.mode}
+                            </span>
+                            <span className="px-2.5 py-1 rounded-md bg-neutral-900 text-xs font-mono text-zinc-400 border border-white/5">
                               {item.duration}
                             </span>
-
-                            <span
-                              className="
-                                        text-sm
-                                        text-zinc-500
-                                      "
-                            >
+                            <span className="text-sm text-zinc-500 font-medium">
                               {item.time}
                             </span>
                           </div>
@@ -602,6 +380,56 @@ export default function Home() {
             </div>
           </div>
         </>
+      )}
+
+      {showModeModal && (
+        <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
+          <div className="w-[450px] bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-2xl">
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Select Session Type
+            </h2>
+            <p className="text-zinc-400 text-sm mb-6">
+              Choose how Ted should assist you.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  handleSetMode("interview");
+                  setShowModeModal(false);
+                  handleStart();
+                }}
+                className="w-full p-4 rounded-xl border border-indigo-500 hover:bg-indigo-500/10 text-left cursor-pointer"
+              >
+                <div className="font-semibold text-white">Interview Mode</div>
+                <div className="text-sm text-zinc-400 mt-1">
+                  Listen only to interviewer questions and generate answers.
+                </div>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleSetMode("meeting");
+                  setShowModeModal(false);
+                  handleStart();
+                }}
+                className="w-full p-4 rounded-xl border border-zinc-700 hover:bg-white/5 text-left cursor-pointer"
+              >
+                <div className="font-semibold text-white">Meeting Mode</div>
+                <div className="text-sm text-zinc-400 mt-1">
+                  Meeting copilot with notes and summaries.
+                </div>
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowModeModal(false)}
+              className="mt-4 w-full py-3 rounded-xl bg-neutral-800 text-white cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       <Overlay />

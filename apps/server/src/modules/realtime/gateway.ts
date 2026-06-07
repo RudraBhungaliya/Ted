@@ -1,10 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { db } from "../../db/client.js";
-
 import { REALTIME_EVENTS } from "./events.js";
-
 import { realtimeManager } from "./manager.js";
-
 import {
   closeDeepgramSession,
   initializeDeepgramSession,
@@ -21,18 +18,14 @@ export async function realtimeGateway(app: FastifyInstance) {
     {
       websocket: true,
     },
-
     (socket) => {
       console.log("Socket connected");
-
       let activeSessionId: string | null = null;
 
       socket.on(
         "message",
-
         async (
           rawMessage: Buffer | ArrayBuffer | string,
-
           isBinary: boolean,
         ) => {
           try {
@@ -47,13 +40,12 @@ export async function realtimeGateway(app: FastifyInstance) {
                   ? Buffer.from(new Uint8Array(rawMessage))
                   : Buffer.from(rawMessage as string);
 
+              // Seamlessly pipes interleaved dual-channel binary down to Deepgram
               sendAudioToDeepgram(activeSessionId, audio);
-
               return;
             }
 
             const message = JSON.parse(rawMessage.toString());
-
             const { event, payload } = message;
 
             if (event === REALTIME_EVENTS.session.start) {
@@ -70,7 +62,6 @@ export async function realtimeGateway(app: FastifyInstance) {
                 );
               }
 
-              // Update session mode in DB
               try {
                 await db.session.update({
                   where: { id: payload.sessionId },
@@ -82,7 +73,6 @@ export async function realtimeGateway(app: FastifyInstance) {
                 console.error("Failed to update session mode in DB:", dbErr);
               }
 
-              // Restore session state from DB if needed
               const restored = await realtimeManager.restoreSession(
                 payload.sessionId,
                 mode,
@@ -93,12 +83,12 @@ export async function realtimeGateway(app: FastifyInstance) {
 
               realtimeManager.attachSocket(payload.sessionId, socket as any);
 
+              // Triggers deepgram configurations
               initializeDeepgramSession(payload.sessionId);
 
               socket.send(
                 JSON.stringify({
                   event: REALTIME_EVENTS.connection.connected,
-
                   payload: {
                     sessionId: payload.sessionId,
                   },
@@ -129,10 +119,6 @@ export async function realtimeGateway(app: FastifyInstance) {
                     mode: mode === "meeting" ? "MEETING" : "INTERVIEW",
                   },
                 });
-                console.log(
-                  `Updated session ${activeSessionId} mode to:`,
-                  mode,
-                );
               } catch (dbErr) {
                 console.error(
                   "Failed to update mode in DB on updateMode event:",
@@ -142,7 +128,6 @@ export async function realtimeGateway(app: FastifyInstance) {
             }
 
             if (event === REALTIME_EVENTS.session.end && activeSessionId) {
-              // Cancel any pending reconnect timers
               const pendingTimer = disconnectTimers.get(activeSessionId);
               if (pendingTimer) {
                 clearTimeout(pendingTimer);
@@ -150,20 +135,15 @@ export async function realtimeGateway(app: FastifyInstance) {
               }
 
               closeDeepgramSession(activeSessionId);
-
               realtimeManager.removeSession(activeSessionId);
-
               activeSessionId = null;
-
               console.log("Session ended");
             }
           } catch (err) {
             console.error("Gateway error:", err);
-
             socket.send(
               JSON.stringify({
                 event: REALTIME_EVENTS.connection.error,
-
                 payload: {
                   message: "Invalid realtime message",
                 },
@@ -177,7 +157,6 @@ export async function realtimeGateway(app: FastifyInstance) {
         console.log("Socket disconnected:", activeSessionId);
 
         if (activeSessionId) {
-          // Instead of immediate deletion, wait for a grace period
           const sessionId = activeSessionId;
           const timer = setTimeout(() => {
             disconnectTimers.delete(sessionId);

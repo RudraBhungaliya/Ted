@@ -2,9 +2,21 @@
 
 import { ReactNode, useState, useEffect, useRef } from "react";
 import { useInterviewStore } from "../features/interview/store";
-import { X, EyeOff, Maximize2, Sparkles, Zap, Briefcase, Coffee, Monitor } from "lucide-react";
+import {
+  X,
+  EyeOff,
+  Maximize2,
+  Sparkles,
+  Zap,
+  Briefcase,
+  Coffee,
+  Monitor,
+} from "lucide-react";
 import TranscriptView from "../components/ui/TranscriptView";
-import { startScreenAnalysisLoop, type ScreenCaptureLoop } from "../lib/screen/capture";
+import {
+  startScreenAnalysisLoop,
+  type ScreenCaptureLoop,
+} from "../lib/screen/capture";
 
 type Props = {
   children?: ReactNode;
@@ -13,7 +25,14 @@ type Props = {
   onSetMode?: (mode: "interview" | "meeting") => void;
 };
 
-export default function FloatingPanel({ children, onStart, onStop, onSetMode }: Props) {
+type SessionPhase = "idle" | "mode-selection" | "active";
+
+export default function FloatingPanel({
+  children,
+  onStart,
+  onStop,
+  onSetMode,
+}: Props) {
   const isRecording = useInterviewStore((state) => state.isRecording);
   const isAiResponding = useInterviewStore((state) => state.isAiResponding);
   const isConnected = useInterviewStore((state) => state.isConnected);
@@ -21,23 +40,42 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
 
   const history = useInterviewStore((state) => state.history);
   const finalTranscript = useInterviewStore((state) => state.finalTranscript);
-  const partialTranscript = useInterviewStore((state) => state.partialTranscript);
+  const partialTranscript = useInterviewStore(
+    (state) => state.partialTranscript,
+  );
   const aiResponse = useInterviewStore((state) => state.aiResponse);
   const sessionMode = useInterviewStore((state) => state.sessionMode);
-  const screenAssistEnabled = useInterviewStore((state) => state.screenAssistEnabled);
+  const screenAssistEnabled = useInterviewStore(
+    (state) => state.screenAssistEnabled,
+  );
   const screenAnalysis = useInterviewStore((state) => state.screenAnalysis);
-  const realtimeSessionId = useInterviewStore((state) => state.realtimeSessionId);
+  const realtimeSessionId = useInterviewStore(
+    (state) => state.realtimeSessionId,
+  );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const transcriptSnapshotRef = useRef("");
+
+  // Track the lifecycle of session configuration local to this panel
+  const [phase, setPhase] = useState<SessionPhase>("idle");
+
+  // Synchronize phase with external recording state changes
+  useEffect(() => {
+    if (isRecording) {
+      setPhase("active");
+    } else if (phase === "active" && !isRecording) {
+      setPhase("idle");
+    }
+  }, [isRecording]);
 
   // Handle scrolling to detect if the user has scrolled up
   const handleScroll = () => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
     // If the user is within 50px of the bottom, allow auto-scroll. Otherwise, they scrolled up.
     shouldAutoScrollRef.current = distanceFromBottom <= 50;
   };
@@ -66,13 +104,14 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
       shouldAutoScrollRef.current = true;
       const timer = setTimeout(() => {
         if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+          scrollContainerRef.current.scrollTop =
+            scrollContainerRef.current.scrollHeight;
         }
       }, 150);
       return () => clearTimeout(timer);
     }
   }, [isRecording]);
-  
+
   const [isStealth, setIsStealth] = useState(false);
   const [savedSize, setSavedSize] = useState({ width: 380, height: 480 });
   const [isIframe, setIsIframe] = useState(false);
@@ -82,11 +121,13 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
   }, []);
 
   useEffect(() => {
-    const desktopControls = (window as Window & {
-      desktopControls?: {
-        setClickThrough?: (enabled: boolean) => void;
-      };
-    }).desktopControls;
+    const desktopControls = (
+      window as Window & {
+        desktopControls?: {
+          setClickThrough?: (enabled: boolean) => void;
+        };
+      }
+    ).desktopControls;
 
     desktopControls?.setClickThrough?.(isStealth);
   }, [isStealth]);
@@ -110,7 +151,11 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
           return;
         }
 
-        const text = [analysis.headline, analysis.analysis, analysis.suggestedAction]
+        const text = [
+          analysis.headline,
+          analysis.analysis,
+          analysis.suggestedAction,
+        ]
           .filter(Boolean)
           .join("\n");
 
@@ -132,9 +177,11 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
       })
       .catch((error) => {
         if (!cancelled) {
-          useInterviewStore.getState().setError(
-            error instanceof Error ? error.message : "Screen assist failed.",
-          );
+          useInterviewStore
+            .getState()
+            .setError(
+              error instanceof Error ? error.message : "Screen assist failed.",
+            );
         }
       });
 
@@ -152,9 +199,16 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
   const [hasInitialized, setHasInitialized] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
-  const [resizeType, setResizeType] = useState<"right" | "bottom" | "both">("both");
+  const [resizeType, setResizeType] = useState<"right" | "bottom" | "both">(
+    "both",
+  );
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+  const [resizeStart, setResizeStart] = useState({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
 
   // Initialize position to bottom-right corner
   useEffect(() => {
@@ -172,27 +226,33 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
   // Send layout sync messages to parent (if inside iframe)
   useEffect(() => {
     if (isIframe && typeof window !== "undefined") {
-      window.parent.postMessage({
-        type: "TED_LAYOUT_UPDATE",
-        isRecording,
-        isStealth,
-        size
-      }, "*");
+      window.parent.postMessage(
+        {
+          type: "TED_LAYOUT_UPDATE",
+          isRecording,
+          isStealth,
+          size,
+        },
+        "*",
+      );
     }
   }, [isIframe, isRecording, isStealth, size]);
 
   // Listen for PING from parent window content script to trigger initial layout sync
   useEffect(() => {
     if (!isIframe) return;
-    
+
     const handlePingMessage = (e: MessageEvent) => {
       if (e.data && e.data.type === "PING") {
-        window.parent.postMessage({
-          type: "TED_LAYOUT_UPDATE",
-          isRecording,
-          isStealth,
-          size
-        }, "*");
+        window.parent.postMessage(
+          {
+            type: "TED_LAYOUT_UPDATE",
+            isRecording,
+            isStealth,
+            size,
+          },
+          "*",
+        );
       }
     };
 
@@ -229,16 +289,30 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
         } else {
           const newX = e.clientX - dragStart.x;
           const newY = e.clientY - dragStart.y;
-          const clampedX = Math.max(12, Math.min(window.innerWidth - size.width - 12, newX));
-          const clampedY = Math.max(12, Math.min(window.innerHeight - size.height - 12, newY));
+          const clampedX = Math.max(
+            12,
+            Math.min(window.innerWidth - size.width - 12, newX),
+          );
+          const clampedY = Math.max(
+            12,
+            Math.min(window.innerHeight - size.height - 12, newY),
+          );
           setPosition({ x: clampedX, y: clampedY });
         }
       } else if (isResizing) {
         if (isIframe) {
           const deltaX = e.clientX - resizeStart.x;
           const deltaY = e.clientY - resizeStart.y;
-          window.parent.postMessage({ type: "TED_RESIZE", deltaX, deltaY, resizeType }, "*");
-          setResizeStart({ x: e.clientX, y: e.clientY, width: size.width, height: size.height });
+          window.parent.postMessage(
+            { type: "TED_RESIZE", deltaX, deltaY, resizeType },
+            "*",
+          );
+          setResizeStart({
+            x: e.clientX,
+            y: e.clientY,
+            width: size.width,
+            height: size.height,
+          });
         } else {
           const deltaX = e.clientX - resizeStart.x;
           const deltaY = e.clientY - resizeStart.y;
@@ -246,18 +320,30 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
           const minH = isStealth ? 100 : 250;
           let newWidth = size.width;
           let newHeight = size.height;
-          
+
           if (resizeType === "right" || resizeType === "both") {
-            newWidth = Math.max(minW, Math.min(800, resizeStart.width + deltaX));
+            newWidth = Math.max(
+              minW,
+              Math.min(800, resizeStart.width + deltaX),
+            );
           }
           if (resizeType === "bottom" || resizeType === "both") {
-            newHeight = Math.max(minH, Math.min(850, resizeStart.height + deltaY));
+            newHeight = Math.max(
+              minH,
+              Math.min(850, resizeStart.height + deltaY),
+            );
           }
-          
+
           setSize({ width: newWidth, height: newHeight });
           setPosition((prev) => {
-            const clampedX = Math.min(prev.x, window.innerWidth - newWidth - 12);
-            const clampedY = Math.min(prev.y, window.innerHeight - newHeight - 12);
+            const clampedX = Math.min(
+              prev.x,
+              window.innerWidth - newWidth - 12,
+            );
+            const clampedY = Math.min(
+              prev.y,
+              window.innerHeight - newHeight - 12,
+            );
             return { x: clampedX, y: clampedY };
           });
         }
@@ -278,7 +364,16 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isDragging, isResizing, dragStart, resizeStart, size, isStealth, resizeType, isIframe]);
+  }, [
+    isDragging,
+    isResizing,
+    dragStart,
+    resizeStart,
+    size,
+    isStealth,
+    resizeType,
+    isIframe,
+  ]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Left click only
@@ -298,13 +393,21 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
     e.preventDefault();
   };
 
-  const handleResizeMouseDown = (e: React.MouseEvent, type: "right" | "bottom" | "both" = "both") => {
+  const handleResizeMouseDown = (
+    e: React.MouseEvent,
+    type: "right" | "bottom" | "both" = "both",
+  ) => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
     setResizeType(type);
     if (isIframe) {
-      setResizeStart({ x: e.clientX, y: e.clientY, width: size.width, height: size.height });
+      setResizeStart({
+        x: e.clientX,
+        y: e.clientY,
+        width: size.width,
+        height: size.height,
+      });
     } else {
       setResizeStart({
         x: e.clientX,
@@ -322,13 +425,19 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
       setSize(newStealthSize);
       setIsStealth(true);
       if (isIframe) {
-        window.parent.postMessage({ type: "TED_STEALTH_TOGGLE", isStealth: true, size: newStealthSize }, "*");
+        window.parent.postMessage(
+          { type: "TED_STEALTH_TOGGLE", isStealth: true, size: newStealthSize },
+          "*",
+        );
       }
     } else {
       setSize(savedSize);
       setIsStealth(false);
       if (isIframe) {
-        window.parent.postMessage({ type: "TED_STEALTH_TOGGLE", isStealth: false, size: savedSize }, "*");
+        window.parent.postMessage(
+          { type: "TED_STEALTH_TOGGLE", isStealth: false, size: savedSize },
+          "*",
+        );
       }
     }
   };
@@ -338,39 +447,116 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
     useInterviewStore.getState().setScreenAssistEnabled(!screenAssistEnabled);
   };
 
+  const handleSelectMode = (mode: "interview" | "meeting") => {
+    if (onSetMode) onSetMode(mode);
+    onStart();
+    setPhase("active");
+  };
 
-  if (!isRecording) {
+  // Phase 1: Show the standard initialization widget
+  if (phase === "idle") {
     return (
-      <>
-        <div 
-          className={`${isIframe ? "absolute w-full h-full inset-0 flex items-center justify-center" : "fixed z-50 transition-all duration-300"}`}
-          style={
-            isIframe
-              ? {}
-              : {
-                  left: hasInitialized ? `${position.x}px` : "auto",
-                  top: hasInitialized ? `${position.y}px` : "auto",
-                  right: hasInitialized ? "auto" : "24px",
-                  bottom: hasInitialized ? "auto" : "24px",
-                }
-          }
+      <div
+        className={`${isIframe ? "absolute w-full h-full inset-0 flex items-center justify-center" : "fixed z-50 transition-all duration-300"}`}
+        style={
+          isIframe
+            ? {}
+            : {
+                left: hasInitialized ? `${position.x}px` : "auto",
+                top: hasInitialized ? `${position.y}px` : "auto",
+                right: hasInitialized ? "auto" : "24px",
+                bottom: hasInitialized ? "auto" : "24px",
+              }
+        }
+      >
+        <button
+          onClick={() => setPhase("mode-selection")}
+          className="flex items-center gap-2.5 px-4.5 py-2.5 rounded-full bg-neutral-900/90 backdrop-blur-xl border border-white/8 text-zinc-200 hover:text-white hover:border-indigo-500/50 hover:bg-neutral-950 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-indigo-500/10 cursor-pointer transition-all hover:scale-105 active:scale-95 group font-semibold text-xs tracking-wide whitespace-nowrap"
         >
-          <button
-            onClick={onStart}
-            className="flex items-center gap-2.5 px-4.5 py-2.5 rounded-full bg-neutral-900/90 backdrop-blur-xl border border-white/8 text-zinc-200 hover:text-white hover:border-indigo-500/50 hover:bg-neutral-950 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-indigo-500/10 cursor-pointer transition-all hover:scale-105 active:scale-95 group font-semibold text-xs tracking-wide whitespace-nowrap"
-          >
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-            </span>
-            <Zap className="w-3.5 h-3.5 fill-white/10 text-indigo-400" />
-            Start Ted
-          </button>
-        </div>
-      </>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+          </span>
+          <Zap className="w-3.5 h-3.5 fill-white/10 text-indigo-400" />
+          Start Ted
+        </button>
+      </div>
     );
   }
 
+  // Phase 2: Force selection of Session Mode prior to calling onStart
+  if (phase === "mode-selection") {
+    return (
+      <div
+        className={`z-50 rounded-2xl overflow-hidden border select-none bg-neutral-950/85 backdrop-blur-3xl border-white/12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)] ${isIframe ? "absolute w-full h-full inset-0" : "fixed"}`}
+        style={
+          isIframe
+            ? { width: "100%", height: "100%", left: 0, top: 0 }
+            : {
+                width: `${size.width}px`,
+                height: `${size.height}px`,
+                left: hasInitialized ? `${position.x}px` : "auto",
+                top: hasInitialized ? `${position.y}px` : "auto",
+                right: hasInitialized ? "auto" : "24px",
+                bottom: hasInitialized ? "auto" : "24px",
+              }
+        }
+      >
+        <div className="w-full h-full flex flex-col p-6 items-center justify-center relative">
+          <button
+            onClick={() => setPhase("idle")}
+            className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-200 p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="mb-6 text-center">
+            <h3 className="text-sm font-bold text-zinc-100 tracking-wide mb-1">
+              Select Session Mode
+            </h3>
+            <p className="text-[11px] text-zinc-400 max-w-[240px]">
+              Choose your target configuration. Mode adjustments are locked once
+              execution begins.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 w-full max-w-[260px]">
+            <button
+              onClick={() => handleSelectMode("interview")}
+              className="flex items-center gap-3 w-full text-left p-3.5 rounded-xl border border-white/5 bg-neutral-900/50 hover:bg-neutral-900 hover:border-indigo-500/40 text-zinc-300 hover:text-white transition-all cursor-pointer group"
+            >
+              <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 transition-colors">
+                <Briefcase className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold">Interview Mode</div>
+                <div className="text-[10px] text-zinc-500 mt-0.5">
+                  Real-time suggested responses
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleSelectMode("meeting")}
+              className="flex items-center gap-3 w-full text-left p-3.5 rounded-xl border border-white/5 bg-neutral-900/50 hover:bg-neutral-900 hover:border-indigo-500/40 text-zinc-300 hover:text-white transition-all cursor-pointer group"
+            >
+              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+                <Coffee className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-semibold">Meeting Mode</div>
+                <div className="text-[10px] text-zinc-500 mt-0.5">
+                  Comprehensive real-time transcript
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Phase 3: Active session configuration
   return (
     <>
       <style>{`
@@ -409,17 +595,18 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
         }
       `}</style>
 
-      <div 
+      <div
         ref={panelRef}
         className={`z-50 rounded-2xl overflow-hidden border select-none transition-all duration-300 ease-out
           ${isIframe ? "absolute w-full h-full inset-0" : "fixed"}
           ${
-            isStealth 
-              ? "bg-neutral-950/40 backdrop-blur-md border-white/5 opacity-50 hover:opacity-100 shadow-xl" 
+            isStealth
+              ? "bg-neutral-950/40 backdrop-blur-md border-white/5 opacity-50 hover:opacity-100 shadow-xl"
               : `bg-neutral-950/75 backdrop-blur-3xl border-white/8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]
-                 ${isAiResponding 
-                   ? "shadow-indigo-500/10 border-indigo-500/35 ring-1 ring-indigo-500/20" 
-                   : "shadow-black/50"
+                 ${
+                   isAiResponding
+                     ? "shadow-indigo-500/10 border-indigo-500/35 ring-1 ring-indigo-500/20"
+                     : "shadow-black/50"
                  }`
           }`}
         style={
@@ -440,23 +627,29 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
                 right: hasInitialized ? "auto" : "24px",
                 bottom: hasInitialized ? "auto" : "24px",
                 transform: "none",
-                transition: isDragging || isResizing ? "none" : "all 0.15s ease-out, border-color 0.5s ease, shadow 0.5s ease",
+                transition:
+                  isDragging || isResizing
+                    ? "none"
+                    : "all 0.15s ease-out, border-color 0.5s ease, shadow 0.5s ease",
               }
         }
       >
         {/* Glow Effects (only in standard mode) */}
         {!isStealth && (
           <>
-            <div className={`absolute top-0 left-0 w-full h-1/2 bg-linear-to-b ${isAiResponding ? 'from-indigo-500/10' : 'from-indigo-600/5'} to-transparent blur-3xl pointer-events-none transition-all duration-700`} />
-            <div className={`absolute bottom-0 right-0 w-32 h-32 ${isAiResponding ? 'bg-indigo-500/5' : 'bg-purple-500/5'} rounded-full blur-3xl pointer-events-none transition-all duration-700`} />
+            <div
+              className={`absolute top-0 left-0 w-full h-1/2 bg-linear-to-b ${isAiResponding ? "from-indigo-500/10" : "from-indigo-600/5"} to-transparent blur-3xl pointer-events-none transition-all duration-700`}
+            />
+            <div
+              className={`absolute bottom-0 right-0 w-32 h-32 ${isAiResponding ? "bg-indigo-500/5" : "bg-purple-500/5"} rounded-full blur-3xl pointer-events-none transition-all duration-700`}
+            />
           </>
         )}
-        
+
         {/* Content container */}
         <div className="relative z-10 w-full h-full flex flex-col p-4">
-          
           {/* Top Bar / Drag Handle */}
-          <div 
+          <div
             onMouseDown={handleMouseDown}
             className="flex items-center justify-between mb-3.5 select-none cursor-grab active:cursor-grabbing p-1.5 -m-1.5 rounded-xl hover:bg-white/5 transition-colors"
           >
@@ -470,12 +663,24 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
             {/* Listening Wave & Status Info */}
             <div className="flex items-center gap-2.5">
               <div className="flex items-end gap-0.75 h-4 px-1">
-                <div className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-1 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-2 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-3 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-4 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-5 ${!isConnected ? 'paused' : ''}`} />
-                <div className={`w-0.75 rounded-full bg-pink-400 voice-bar voice-bar-6 ${!isConnected ? 'paused' : ''}`} />
+                <div
+                  className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-1 ${!isConnected ? "paused" : ""}`}
+                />
+                <div
+                  className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-2 ${!isConnected ? "paused" : ""}`}
+                />
+                <div
+                  className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-3 ${!isConnected ? "paused" : ""}`}
+                />
+                <div
+                  className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-4 ${!isConnected ? "paused" : ""}`}
+                />
+                <div
+                  className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-5 ${!isConnected ? "paused" : ""}`}
+                />
+                <div
+                  className={`w-0.75 rounded-full bg-pink-400 voice-bar voice-bar-6 ${!isConnected ? "paused" : ""}`}
+                />
               </div>
 
               <div className="flex flex-col">
@@ -487,8 +692,10 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
                     </span>
                   ) : isStealth ? (
                     "Ted Stealth"
+                  ) : sessionMode === "interview" ? (
+                    "Interview Session"
                   ) : (
-                    "Ted Active"
+                    "Meeting Session"
                   )}
                 </span>
                 {!isStealth && (
@@ -501,15 +708,19 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
 
             {/* Window Controls */}
             <div className="flex items-center gap-1.5 relative z-20">
-              <button 
-                onClick={toggleStealth} 
+              <button
+                onClick={toggleStealth}
                 className="text-zinc-400 hover:text-zinc-100 hover:bg-white/10 rounded-lg p-1.5 transition-all border border-transparent hover:border-white/5 cursor-pointer"
                 title={isStealth ? "Expand" : "Stealth Mode"}
               >
-                {isStealth ? <Maximize2 className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                {isStealth ? (
+                  <Maximize2 className="w-3.5 h-3.5" />
+                ) : (
+                  <EyeOff className="w-3.5 h-3.5" />
+                )}
               </button>
-              <button 
-                onClick={onStop} 
+              <button
+                onClick={onStop}
                 className="text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg p-1.5 transition-all border border-transparent hover:border-red-500/10 cursor-pointer"
                 title="Stop & Close"
               >
@@ -518,39 +729,31 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
             </div>
           </div>
 
-          {/* Control Bar (Mode Select & Screen Assist) - Standard Mode Only */}
+          {/* Control Bar (Static Label & Screen Assist Display) - Switcher removed entirely to avoid runtime updates */}
           {!isStealth && (
             <div className="flex items-center justify-between gap-3 p-1.5 bg-white/2 border border-white/5 rounded-xl mb-3">
-              {/* Segmented Mode Selector */}
-              <div className="flex bg-neutral-900/60 p-0.5 rounded-lg border border-white/5">
-                <button
-                  onClick={() => onSetMode?.("interview")}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold tracking-wide transition-all cursor-pointer ${
-                    sessionMode === "interview"
-                      ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-[0_2px_8px_rgba(99,102,241,0.15)]"
-                      : "text-zinc-400 hover:text-zinc-200 border border-transparent"
-                  }`}
-                >
-                  <Briefcase className="w-3 h-3" />
-                  Interview
-                </button>
-                <button
-                  onClick={() => onSetMode?.("meeting")}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-semibold tracking-wide transition-all cursor-pointer ${
-                    sessionMode === "meeting"
-                      ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shadow-[0_2px_8px_rgba(99,102,241,0.15)]"
-                      : "text-zinc-400 hover:text-zinc-200 border border-transparent"
-                  }`}
-                >
-                  <Coffee className="w-3 h-3" />
-                  Meeting
-                </button>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-neutral-900/60 border border-white/5 select-none">
+                {sessionMode === "interview" ? (
+                  <>
+                    <Briefcase className="w-3 h-3 text-indigo-400" />
+                    <span className="text-xs text-zinc-400">
+                      Interview Mode Active
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Coffee className="w-3 h-3 text-indigo-400" />
+                    <span className="text-xs text-zinc-400">
+                      Meeting Mode Active
+                    </span>
+                  </>
+                )}
               </div>
 
-              {/* Screen Assist (Placeholder - Coming Soon) */}
+              {/* Screen Assist Setup */}
               <div className="relative group">
                 <button
-                    onClick={toggleScreenAssist}
+                  onClick={toggleScreenAssist}
                   className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wide border transition-all ${
                     screenAssistEnabled
                       ? "text-indigo-200 border-indigo-500/30 bg-indigo-500/10 cursor-pointer"
@@ -558,44 +761,60 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
                   }`}
                 >
                   <Monitor className="w-3 h-3" />
-                    {screenAssistEnabled ? "Screen Assist On" : "Screen Assist"}
-                    <span className="bg-zinc-800 text-[8px] text-zinc-400 px-1 rounded uppercase tracking-wider scale-90 border border-zinc-700/50">
-                      {screenAssistEnabled ? "Live" : "Off"}
-                    </span>
+                  {screenAssistEnabled ? "Screen Assist On" : "Screen Assist"}
+                  <span className="bg-zinc-800 text-[8px] text-zinc-400 px-1 rounded uppercase tracking-wider scale-90 border border-zinc-700/50">
+                    {screenAssistEnabled ? "Live" : "Off"}
+                  </span>
                 </button>
                 {/* Micro tooltip */}
                 <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover:block z-30 bg-neutral-900 border border-white/10 text-zinc-300 text-[9px] px-2 py-1 rounded shadow-md whitespace-nowrap">
-                    Capture the screen and send frames to Gemini
+                  Capture the screen and send frames to Gemini
                 </div>
               </div>
             </div>
           )}
 
-            {screenAssistEnabled && screenAnalysis && !isStealth && (
-              <div className="mb-3 rounded-xl border border-indigo-500/15 bg-indigo-500/5 p-3 text-xs text-zinc-300">
-                <div className="mb-1 font-semibold text-indigo-300">Screen Insight</div>
-                <div className="whitespace-pre-line text-zinc-400">{screenAnalysis}</div>
+          {screenAssistEnabled && screenAnalysis && !isStealth && (
+            <div className="mb-3 rounded-xl border border-indigo-500/15 bg-indigo-500/5 p-3 text-xs text-zinc-300">
+              <div className="mb-1 font-semibold text-indigo-300">
+                Screen Insight
               </div>
-            )}
+              <div className="whitespace-pre-line text-zinc-400">
+                {screenAnalysis}
+              </div>
+            </div>
+          )}
 
           {/* Transcript Area */}
-          <div 
+          <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
             className={`flex-1 overflow-y-auto w-full custom-scrollbar select-text
-              ${isStealth 
-                ? 'text-xs text-zinc-400 bg-transparent py-1' 
-                : 'bg-black/35 rounded-xl border border-white/5 p-3 text-sm text-zinc-300'
-              }`}
+    ${
+      isStealth
+        ? "text-xs text-zinc-400 bg-transparent py-1"
+        : "bg-black/35 rounded-xl border border-white/5 p-3 text-sm text-zinc-300"
+    }`}
           >
-            <TranscriptView />
+            {sessionMode === "meeting" ? (
+              <TranscriptView />
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">
+                    Suggested Answer
+                  </div>
+
+                  <div className="text-zinc-200 whitespace-pre-wrap">
+                    {aiResponse || "Waiting for interviewer question..."}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Hidden children */}
-          <div className="hidden">
-            {children}
-          </div>
-
+          <div className="hidden">{children}</div>
         </div>
 
         {/* Resize Handles */}
@@ -625,8 +844,24 @@ export default function FloatingPanel({ children, onStart, onStop, onSetMode }: 
                 viewBox="0 0 8 8"
                 className="text-zinc-500 group-hover/resize:text-indigo-400 transition-colors pointer-events-none"
               >
-                <line x1="8" y1="0" x2="0" y2="8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                <line x1="8" y1="4" x2="4" y2="8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <line
+                  x1="8"
+                  y1="0"
+                  x2="0"
+                  y2="8"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="8"
+                  y1="4"
+                  x2="4"
+                  y2="8"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
               </svg>
             </div>
           </>

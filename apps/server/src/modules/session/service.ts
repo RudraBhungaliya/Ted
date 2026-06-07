@@ -20,7 +20,6 @@ export async function createSession(
     return session;
   } catch (err) {
     console.error("CREATE SESSION ERROR", err);
-
     throw err;
   }
 }
@@ -54,45 +53,81 @@ export async function endSession(sessionId: string) {
 }
 
 export async function getSessionById(sessionId: string) {
-  return await db.session.findUnique({
+  const session = await db.session.findUnique({
     where: {
       id: sessionId,
     },
-
     include: {
       transcripts: {
         orderBy: {
           createdAt: "asc",
         },
       },
-
       aiMessages: {
         orderBy: {
           createdAt: "asc",
         },
       },
-
       analytics: true,
-
       summary: true,
     },
   });
+
+  if (!session) return null;
+
+  // 1. Map human/system speaker transcripts to a standard format
+  const spokenTurns = (session.transcripts || []).map((t: any) => ({
+    id: t.id,
+    role: t.speakerType === "USER" ? "user" : "interviewer",
+    speakerName: t.speakerName || (t.speakerType === "USER" ? "User" : "Interviewer"),
+    text: t.text,
+    timestamp: new Date(t.createdAt).getTime(),
+  }));
+
+  // 2. Map generated AI messages to the same structure
+  const aiTurns = (session.aiMessages || []).map((m: any) => ({
+    id: m.id,
+    role: "ai",
+    speakerName: "TED (AI)",
+    text: m.text,
+    timestamp: new Date(m.createdAt).getTime(),
+  }));
+
+  // 3. Interleave and sort strictly by historical timeline order
+  const timeline = [...spokenTurns, ...aiTurns].sort(
+    (a, b) => a.timestamp - b.timestamp
+  );
+
+  // Return the session object decorated with our interleaved timeline array
+  return {
+    ...session,
+    timeline,
+  };
 }
 
 export async function getUserSessions(
   userId: string,
 ) {
-  console.log("USER ID =", userId);
+  console.log("Fetching all session records for User ID =", userId);
 
+  // Fetches EVERY session from the database, newest records at the top
   const sessions = await db.session.findMany({
-    take: 1,
+    where: {
+      userId: userId, // Ensure you filter by the user's active id context
+    },
+    include: {
+      summary: true,
+    },
+    orderBy: {
+      startedAt: "desc",
+    },
   });
 
   return sessions;
 }
 
 export async function getActiveSessionByUserId(userId: string) {
-  return await db.session.findFirst({
+  const session = await db.session.findFirst({
     where: {
       userId,
       status: "ACTIVE",
@@ -103,16 +138,41 @@ export async function getActiveSessionByUserId(userId: string) {
           createdAt: "asc",
         },
       },
-
       aiMessages: {
         orderBy: {
           createdAt: "asc",
         },
       },
-
       analytics: true,
-
       summary: true,
     },
   });
+
+  if (!session) return null;
+
+  // Mirror the timeline logic for active/resumed sessions to keep structures identical
+  const spokenTurns = (session.transcripts || []).map((t: any) => ({
+    id: t.id,
+    role: t.speakerType === "USER" ? "user" : "interviewer",
+    speakerName: t.speakerName || (t.speakerType === "USER" ? "User" : "Interviewer"),
+    text: t.text,
+    timestamp: new Date(t.createdAt).getTime(),
+  }));
+
+  const aiTurns = (session.aiMessages || []).map((m: any) => ({
+    id: m.id,
+    role: "ai",
+    speakerName: "TED (AI)",
+    text: m.text,
+    timestamp: new Date(m.createdAt).getTime(),
+  }));
+
+  const timeline = [...spokenTurns, ...aiTurns].sort(
+    (a, b) => a.timestamp - b.timestamp
+  );
+
+  return {
+    ...session,
+    timeline,
+  };
 }

@@ -94,3 +94,43 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+/* Modal and session UI */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-content {
+  background: #1a1a1a;
+  padding: 1.5rem;
+  border-radius: 8px;
+  width: 280px;
+  color: #fff;
+  text-align: center;
+}
+.hidden {
+  display: none;
+}
+.session-list {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(30,30,30,0.4);
+  border-radius: 6px;
+}
+.session-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.session-list li {
+  cursor: pointer;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.session-list li:hover {
+  background: rgba(255,255,255,0.1);
+}
