@@ -75,10 +75,24 @@ export function SessionDetails({
         (t: any) => (
           <div key={t.id}>
             <strong>
-              {t.speakerName ?? t.source ?? t.speakerType}
+              {t.speakerName ??
+                (t.speakerType === "USER"
+                  ? "You"
+                  : t.speakerType === "PARTICIPANT"
+                    ? "Interviewer"
+                    : t.speakerType)}
             </strong>
-
             : {t.text}
+          </div>
+        ),
+      )}
+
+      <h2>AI Replies</h2>
+
+      {session.aiMessages?.map(
+        (m: any) => (
+          <div key={m.id}>
+            <strong>TED (AI)</strong>: {m.text}
           </div>
         ),
       )}

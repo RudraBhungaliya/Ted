@@ -1,108 +1,89 @@
 import { RealtimeClient } from "../../lib/realtime/client";
 import { useInterviewStore } from "./store";
+import { getSession } from "../../lib/api/session";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
   "http://localhost:4000";
 
-// Module-level singleton so start and stop always reference the same client
 let activeClient: RealtimeClient | null = null;
 
-async function resumeSession(sessionId: string) {
-  try {
-    const response = await fetch(`${API_URL}/api/session/${sessionId}`, {
-      credentials: "include",
-    });
+function speakerRole(
+  speakerType?: "USER" | "PARTICIPANT" | "AI",
+): "user" | "assistant" | "interviewer" | "ai" {
+  if (speakerType === "USER") return "user";
+  if (speakerType === "AI") return "ai";
+  if (speakerType === "PARTICIPANT") return "interviewer";
+  return "user";
+}
 
-    if (!response.ok) {
-      throw new Error("Failed to fetch active session details");
+function handleTranscript(
+  text: string,
+  isFinal: boolean,
+  meta?: {
+    speakerName?: string;
+    speakerType?: "USER" | "PARTICIPANT" | "AI";
+    triggerAi?: boolean;
+  },
+) {
+  const mode = useInterviewStore.getState().sessionMode;
+  const speakerName =
+    meta?.speakerName ||
+    (meta?.speakerType === "USER"
+      ? "You"
+      : meta?.speakerType === "PARTICIPANT"
+        ? "Interviewer"
+        : "Unknown");
+
+  if (!isFinal) {
+    if (mode === "meeting" || meta?.speakerType === "PARTICIPANT") {
+      useInterviewStore.getState().setPartialTranscript(text);
     }
-
-    const data = await response.json();
-    const session = data.session;
-
-    const userTurns = (session.transcripts || []).map((t: any) => ({
-      id: t.id,
-      role: "user" as const,
-      text: t.text,
-      timestamp: new Date(t.createdAt).getTime(),
-    }));
-
-    const assistantTurns = (session.aiMessages || []).map((m: any) => ({
-      id: m.id,
-      role: "assistant" as const,
-      text: m.text,
-      timestamp: new Date(m.createdAt).getTime(),
-    }));
-
-    const sortedTurns = [...userTurns, ...assistantTurns].sort(
-      (a, b) => a.timestamp - b.timestamp,
-    );
-
-    useInterviewStore.getState().clearAiResponse();
-    useInterviewStore.getState().setHistory(sortedTurns);
-    if (session.mode) {
-      useInterviewStore
-        .getState()
-        .setSessionMode(session.mode === "MEETING" ? "meeting" : "interview");
-    }
-    useInterviewStore.getState().start(sessionId);
-
-    const client = new RealtimeClient();
-    activeClient = client;
-
-    await client.connect(
-      sessionId,
-      (text, isFinal) => {
-        if (isFinal) {
-          useInterviewStore.getState().setFinalTranscript(text);
-          useInterviewStore.getState().addHistoryTurn({
-            id: Math.random().toString(36).substring(2, 9),
-            role: "user",
-            text,
-          });
-          return;
-        }
-
-        useInterviewStore.getState().setPartialTranscript(text);
-      },
-
-      (token) => {
-        useInterviewStore.getState().appendAiToken(token);
-      },
-
-      () => {
-        useInterviewStore.getState().setAiResponding(true);
-        useInterviewStore.getState().clearAiResponse();
-        useInterviewStore.getState().setError(null);
-      },
-
-      () => {
-        useInterviewStore.getState().setAiResponding(false);
-        const finalResponse = useInterviewStore.getState().aiResponse;
-        if (finalResponse) {
-          useInterviewStore.getState().addHistoryTurn({
-            id: Math.random().toString(36).substring(2, 9),
-            role: "assistant",
-            text: finalResponse,
-          });
-        }
-      },
-
-      (status) => {
-        useInterviewStore.getState().setStatus(status);
-      },
-
-      (message) => {
-        useInterviewStore.getState().setError(message);
-      },
-    );
-
-    useInterviewStore.getState().setConnected(true);
-    await client.startStreaming();
-  } catch (err) {
-    console.error("Failed to resume active session", err);
+    return;
   }
+
+  useInterviewStore.getState().setPartialTranscript("");
+
+  useInterviewStore.getState().addTranscriptTurn({
+    role: speakerRole(meta?.speakerType),
+    speakerName,
+    text,
+  });
+
+  if (mode === "meeting") {
+    useInterviewStore.getState().setFinalTranscript(text);
+  }
+}
+
+function connectHandlers() {
+  return {
+    onTranscript: handleTranscript,
+    onAiToken: (token: string) => {
+      useInterviewStore.getState().appendAiToken(token);
+    },
+    onAiStart: () => {
+      useInterviewStore.getState().setAiResponding(true);
+      useInterviewStore.getState().clearAiResponse();
+      useInterviewStore.getState().setError(null);
+    },
+    onAiEnd: () => {
+      useInterviewStore.getState().setAiResponding(false);
+      const finalResponse = useInterviewStore.getState().aiResponse;
+      if (finalResponse) {
+        useInterviewStore.getState().addTranscriptTurn({
+          role: "ai",
+          speakerName: "TED (AI)",
+          text: finalResponse,
+        });
+      }
+    },
+    onStatus: (status: string) => {
+      useInterviewStore.getState().setStatus(status);
+    },
+    onError: (message: string) => {
+      useInterviewStore.getState().setError(message);
+    },
+  };
 }
 
 async function startInterview() {
@@ -114,13 +95,8 @@ async function startInterview() {
 
     const response = await fetch(`${API_URL}/api/session/create`, {
       method: "POST",
-
       credentials: "include",
-
-      headers: {
-        "Content-Type": "application/json",
-      },
-
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         mode: currentMode === "meeting" ? "MEETING" : "INTERVIEW",
       }),
@@ -131,65 +107,40 @@ async function startInterview() {
     }
 
     const data = await response.json();
-
     const realtimeSessionId = data.session.id;
 
     useInterviewStore.getState().clear();
     useInterviewStore.getState().start(realtimeSessionId);
 
+    // Load initial timeline history if it exists
+    try {
+      const sessionData = await getSession(realtimeSessionId);
+      const mappedHistory = (sessionData.timeline || []).map((t: any) => ({
+        id: t.id,
+        role: t.role,
+        speakerName: t.speakerName,
+        text: t.text,
+      }));
+      useInterviewStore.getState().setHistory(mappedHistory);
+    } catch (err) {
+      console.warn("Failed to load initial session timeline:", err);
+    }
+
+    const handlers = connectHandlers();
     const client = new RealtimeClient();
     activeClient = client;
 
     await client.connect(
       realtimeSessionId,
-
-      (text, isFinal) => {
-        if (isFinal) {
-          useInterviewStore.getState().setFinalTranscript(text);
-          useInterviewStore.getState().addHistoryTurn({
-            id: Math.random().toString(36).substring(2, 9),
-            role: "user",
-            text,
-          });
-          return;
-        }
-
-        useInterviewStore.getState().setPartialTranscript(text);
-      },
-
-      (token) => {
-        useInterviewStore.getState().appendAiToken(token);
-      },
-
-      () => {
-        useInterviewStore.getState().setAiResponding(true);
-        useInterviewStore.getState().clearAiResponse();
-        useInterviewStore.getState().setError(null);
-      },
-
-      () => {
-        useInterviewStore.getState().setAiResponding(false);
-        const finalResponse = useInterviewStore.getState().aiResponse;
-        if (finalResponse) {
-          useInterviewStore.getState().addHistoryTurn({
-            id: Math.random().toString(36).substring(2, 9),
-            role: "assistant",
-            text: finalResponse,
-          });
-        }
-      },
-
-      (status) => {
-        useInterviewStore.getState().setStatus(status);
-      },
-
-      (message) => {
-        useInterviewStore.getState().setError(message);
-      },
+      handlers.onTranscript,
+      handlers.onAiToken,
+      handlers.onAiStart,
+      handlers.onAiEnd,
+      handlers.onStatus,
+      handlers.onError,
     );
 
     useInterviewStore.getState().setConnected(true);
-
     await client.startStreaming();
   } catch (err) {
     console.error("Interview start failed", err);
@@ -200,18 +151,12 @@ async function startInterview() {
     useInterviewStore.getState().setConnected(false);
 
     const sessionId = useInterviewStore.getState().realtimeSessionId;
-
     if (sessionId) {
       try {
-        await fetch(
-          `http://localhost:4000/api/session/end/${sessionId}`,
-
-          {
-            method: "POST",
-
-            credentials: "include",
-          },
-        );
+        await fetch(`${API_URL}/api/session/end/${sessionId}`, {
+          method: "POST",
+          credentials: "include",
+        });
       } catch {}
     }
 
@@ -223,7 +168,6 @@ async function stopInterview() {
   const sessionId = useInterviewStore.getState().realtimeSessionId;
 
   activeClient?.disconnect();
-
   activeClient = null;
 
   useInterviewStore.getState().setConnected(false);
@@ -231,15 +175,10 @@ async function stopInterview() {
 
   if (sessionId) {
     try {
-      await fetch(
-        `http://localhost:4000/api/session/end/${sessionId}`,
-
-        {
-          method: "POST",
-
-          credentials: "include",
-        },
-      );
+      await fetch(`${API_URL}/api/session/end/${sessionId}`, {
+        method: "POST",
+        credentials: "include",
+      });
     } catch (err) {
       console.error("Failed to end session", err);
     }
@@ -249,34 +188,10 @@ async function stopInterview() {
 }
 
 export const useInterview = () => {
-  // useEffect(() => {
-  //   async function checkActiveSession() {
-  //     if (useInterviewStore.getState().isRecording || activeClient) return;
-
-  //     try {
-  //       const res = await fetch("http://localhost:4000/api/session/active", {
-  //         credentials: "include",
-  //       });
-  //       if (res.ok) {
-  //         const data = await res.json();
-  //         if (data.session) {
-  //           console.log("Resuming active session:", data.session.id);
-  //           resumeSession(data.session.id);
-  //         }
-  //       }
-  //     } catch (err) {
-  //       console.error("Failed to check active session", err);
-  //     }
-  //   }
-
-  //   void checkActiveSession();
-  // }, []);
-
   const handleSetMode = (mode: "interview" | "meeting") => {
     if (useInterviewStore.getState().isRecording) {
       return;
     }
-
     useInterviewStore.getState().setSessionMode(mode);
   };
 

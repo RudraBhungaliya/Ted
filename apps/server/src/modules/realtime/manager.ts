@@ -50,17 +50,23 @@ class RealtimeManager {
 
     if (!session) return false;
 
-    const transcriptTurns: ConversationTurn[] = session.transcripts.map(
-      (t) => ({
-        role: t.speakerType === "AI" ? "assistant" : "user",
-
+    const interviewerTurns: ConversationTurn[] = session.transcripts
+      .filter((t) => t.speakerType === "PARTICIPANT")
+      .map((t) => ({
+        role: "user",
         text: t.text,
-
         timestamp: t.createdAt.getTime(),
-      }),
-    );
+      }));
 
-    const turns = transcriptTurns.sort((a, b) => a.timestamp - b.timestamp);
+    const aiTurns: ConversationTurn[] = session.aiMessages.map((m) => ({
+      role: "assistant",
+      text: m.text,
+      timestamp: m.createdAt.getTime(),
+    }));
+
+    const turns = [...interviewerTurns, ...aiTurns].sort(
+      (a, b) => a.timestamp - b.timestamp,
+    );
     const mode = session.mode === "MEETING" ? "meeting" : "interview";
 
     this.sessions.set(sessionId, {

@@ -40,11 +40,7 @@ export async function findSessionById(sessionId: string) {
         },
       },
 
-      analytics: {
-        orderBy: {
-          createdAt: "asc",
-        },
-      },
+      analytics: true,
 
       summary: true,
     },
@@ -85,11 +81,7 @@ export async function deleteSessionRecord(userId : string){
                 },
             },
 
-            analytics : {
-                orderBy : {
-                    createdAt : "asc",
-                },
-            },
+            analytics : true,
 
             summary : true,
         },

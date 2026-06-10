@@ -60,24 +60,33 @@ export default function SessionDetailPage({
     return <div className="p-8">Session not found.</div>;
   }
 
-  const messages = [
-    ...session.transcripts.map((transcript: Transcript) => ({
+  const messages = (session.timeline ?? [
+    ...session.transcripts.map((transcript: Transcript & { speakerName?: string; speakerType?: string }) => ({
       id: transcript.id,
-      role: "user",
+      role:
+        transcript.speakerType === "USER"
+          ? "user"
+          : transcript.speakerType === "PARTICIPANT"
+            ? "interviewer"
+            : "user",
+      speakerName:
+        transcript.speakerName ||
+        (transcript as { speaker?: string }).speaker ||
+        (transcript.speakerType === "USER" ? "You" : "Interviewer"),
       text: transcript.text,
       createdAt: transcript.createdAt,
     })),
-
     ...session.aiMessages.map((message: AiMessage) => ({
       id: message.id,
-      role: "assistant",
+      role: "ai" as const,
+      speakerName: "TED (AI)",
       text: message.text,
       createdAt: message.createdAt,
     })),
-  ].sort(
-    (a, b) =>
-      new Date(a.createdAt).getTime() -
-      new Date(b.createdAt).getTime(),
+  ]).sort(
+    (a: { createdAt?: string; timestamp?: number }, b: { createdAt?: string; timestamp?: number }) =>
+      (a.timestamp ?? new Date(a.createdAt!).getTime()) -
+      (b.timestamp ?? new Date(b.createdAt!).getTime()),
   );
 
   const latestAnalytics: Analytics | undefined =
@@ -167,10 +176,11 @@ export default function SessionDetailPage({
       </div>
 
       <div className="space-y-6">
-        {messages.map((message) => (
+        {messages.map((message: { id: string; role: "user" | "assistant" | "interviewer" | "ai"; speakerName?: string; text: string }) => (
           <SessionMessage
             key={message.id}
             role={message.role}
+            speakerName={message.speakerName}
             text={message.text}
           />
         ))}

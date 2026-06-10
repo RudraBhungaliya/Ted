@@ -1,20 +1,27 @@
+/**
+ * transcript.ts  (apps/server/src/modules/realtime/transcript.ts)
+ *
+ * Key fix: after finalizeAiTurn(), save the AI reply to the `transcript` table
+ * with speakerType "AI" so the session chat contains all 3 parties:
+ *   PARTICIPANT (interviewer) → AI (ted's reply) → USER (what you actually said)
+ */
+
 import { realtimeManager } from "./manager.js";
 import { REALTIME_EVENTS } from "./events.js";
-import { streamAiResponse } from "../ai/stream.js";
-import { interruptAiStream } from "./stream.js";
-import { db } from "../../db/client.js";
-import { isDuplicateQuestion } from "../ai/detector.js";
-import { analyzeAnswer } from "../analytics/service.js";
+import { streamGeminiResponse } from "../ai/providers/gemini.js"; // adjust path to your AI streamer
 import { saveTranscript } from "../transcript/service.js";
 
-export function emitPartialTranscript(sessionId: string, text: string) {
-  if (realtimeManager.isAiStreaming(sessionId)) {
-    interruptAiStream(sessionId);
-    realtimeManager.setAiStreaming(sessionId, false);
-  }
+// ─── Partial transcript buffer (per session, per speaker) ───────────────────
 
+const partialBuffers = new Map<string, string>();
+
+export function emitPartialTranscript(
+  sessionId: string,
+  text: string,
+  speakerName: string,
+) {
+  partialBuffers.set(`${sessionId}:${speakerName}`, text);
   const socket = realtimeManager.getSocket(sessionId);
-
   if (!socket) return;
 
   socket.send(
@@ -23,87 +30,138 @@ export function emitPartialTranscript(sessionId: string, text: string) {
       payload: {
         sessionId,
         text,
+        speakerName,
+        speakerType: "PARTICIPANT",
+        isFinal: false,
+        triggerAi: false,
       },
     }),
   );
 }
 
-export async function emitFinalTranscript(sessionId: string, text: string) {
-  realtimeManager.appendFinalSegment(sessionId, text);
+// ─── Emit any transcript event to the frontend ──────────────────────────────
 
-  await saveTranscript(sessionId, "Interviewer", "PARTICIPANT", text);
-
+export function emitTranscriptEvent(
+  sessionId: string,
+  payload: {
+    sessionId: string;
+    text: string;
+    speakerName: string;
+    speakerType: "USER" | "PARTICIPANT" | "AI";
+    isFinal: boolean;
+    triggerAi: boolean;
+  },
+) {
   const socket = realtimeManager.getSocket(sessionId);
-
   if (!socket) return;
 
-  socket.send(
-    JSON.stringify({
-      event: REALTIME_EVENTS.transcript.final,
+  const event = payload.isFinal
+    ? REALTIME_EVENTS.transcript.final
+    : REALTIME_EVENTS.transcript.partial;
 
-      payload: {
-        sessionId,
-
-        text: realtimeManager.getLatestUserTurn(sessionId),
-      },
-    }),
-  );
-
-  void emitSpeechFinal(sessionId);
+  socket.send(JSON.stringify({ event, payload }));
 }
 
-export async function emitSpeechFinal(sessionId: string) {
+// ─── Accumulate interviewer segments before committing ──────────────────────
+
+export function appendInterviewerSegment(sessionId: string, text: string) {
+  realtimeManager.appendFinalSegment(sessionId, text);
+}
+
+// ─── Track what you (USER) said — stored for session history ────────────────
+
+export async function trackUserSpeech(sessionId: string, text: string) {
+  realtimeManager.appendUserTurn(sessionId, text);
+}
+
+// ─── Speech final: commit pending interviewer text and kick off AI ───────────
+
+let speechFinalTimers = new Map<string, NodeJS.Timeout>();
+
+export function emitSpeechFinal(sessionId: string) {
+  // Debounce: wait a short moment in case more transcript chunks are incoming
+  const existing = speechFinalTimers.get(sessionId);
+  if (existing) clearTimeout(existing);
+
+  const timer = setTimeout(async () => {
+    speechFinalTimers.delete(sessionId);
+    await triggerAiReply(sessionId);
+  }, 300);
+
+  speechFinalTimers.set(sessionId, timer);
+}
+
+// ─── Core AI reply flow ──────────────────────────────────────────────────────
+
+async function triggerAiReply(sessionId: string) {
   if (realtimeManager.isAiStreaming(sessionId)) {
+    console.log(
+      "[Transcript] AI already streaming for",
+      sessionId,
+      "— skipping.",
+    );
     return;
   }
 
-  const committed = realtimeManager.commitUserTurn(sessionId);
-
-  if (!committed.trim()) {
-    return;
-  }
-
-  await saveTranscript(sessionId, "User", "USER", committed);
-
-  if (isDuplicateQuestion(sessionId, committed)) {
-    console.log("Duplicate question ignored:", committed);
-
+  const question = realtimeManager.commitUserTurn(sessionId);
+  if (!question.trim()) {
+    console.log("[Transcript] No pending interviewer text to answer.");
     return;
   }
 
   const turns = realtimeManager.getTurns(sessionId);
+  const socket = realtimeManager.getSocket(sessionId);
+  if (!socket) return;
 
-  const analytics = analyzeAnswer(committed);
+  realtimeManager.setAiStreaming(sessionId, true);
 
-  console.log("ANSWER ANALYTICS:", analytics);
+  // Notify frontend: AI is starting
+  socket.send(
+    JSON.stringify({ event: REALTIME_EVENTS.ai.start, payload: { sessionId } }),
+  );
 
-  await db.sessionAnalytics.upsert({
-    where: {
-      sessionId,
-    },
+  try {
+    // Stream tokens from Gemini
+    await streamGeminiResponse(sessionId, question, turns, (token: string) => {
+      // 1. Accumulate in memory
+      realtimeManager.appendAiToken(sessionId, token);
 
-    create: {
-      sessionId,
+      // 2. Stream token to frontend immediately
+      socket.send(
+        JSON.stringify({
+          event: REALTIME_EVENTS.ai.token,
+          payload: { sessionId, token },
+        }),
+      );
+    });
 
-      totalWords: analytics.totalWords,
+    // All tokens received — finalize the turn in memory
+    const fullAiReply = realtimeManager.finalizeAiTurn(sessionId);
 
-      fillerCount: analytics.fillerCount,
+    // ─── FIX: Save AI reply to DB so session chat has all 3 parties ───────
+    if (fullAiReply.trim()) {
+      await saveTranscript(sessionId, "Ted", "AI", fullAiReply);
+    }
+    // ──────────────────────────────────────────────────────────────────────
 
-      confidenceScore: analytics.confidenceScore,
-    },
+    // Notify frontend: AI done
+    socket.send(
+      JSON.stringify({ event: REALTIME_EVENTS.ai.end, payload: { sessionId } }),
+    );
+  } catch (err) {
+    console.error("[Transcript] Gemini stream error:", err);
+    realtimeManager.finalizeAiTurn(sessionId); // clear tokens even on error
 
-    update: {
-      totalWords: {
-        increment: analytics.totalWords,
-      },
-
-      fillerCount: {
-        increment: analytics.fillerCount,
-      },
-
-      confidenceScore: analytics.confidenceScore,
-    },
-  });
-
-  await streamAiResponse(sessionId, turns);
+    socket.send(
+      JSON.stringify({
+        event: REALTIME_EVENTS.ai.error,
+        payload: {
+          sessionId,
+          message: "AI response failed. Please try again.",
+        },
+      }),
+    );
+  } finally {
+    realtimeManager.setAiStreaming(sessionId, false);
+  }
 }

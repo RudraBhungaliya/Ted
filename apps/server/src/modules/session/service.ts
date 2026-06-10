@@ -76,13 +76,26 @@ export async function getSessionById(sessionId: string) {
   if (!session) return null;
 
   // 1. Map human/system speaker transcripts to a standard format
-  const spokenTurns = (session.transcripts || []).map((t: any) => ({
-    id: t.id,
-    role: t.speakerType === "USER" ? "user" : "interviewer",
-    speakerName: t.speakerName || (t.speakerType === "USER" ? "User" : "Interviewer"),
-    text: t.text,
-    timestamp: new Date(t.createdAt).getTime(),
-  }));
+  const spokenTurns = (session.transcripts || [])
+    .filter((t: any) => t.speakerType !== "AI")
+    .map((t: any) => ({
+      id: t.id,
+      role:
+        t.speakerType === "USER"
+          ? "user"
+          : t.speakerType === "PARTICIPANT"
+            ? "interviewer"
+            : "participant",
+      speakerName:
+        t.speakerName ||
+        (t.speakerType === "USER"
+          ? "You"
+          : t.speakerType === "PARTICIPANT"
+            ? "Interviewer"
+            : "Participant"),
+      text: t.text,
+      timestamp: new Date(t.createdAt).getTime(),
+    }));
 
   // 2. Map generated AI messages to the same structure
   const aiTurns = (session.aiMessages || []).map((m: any) => ({
@@ -151,13 +164,26 @@ export async function getActiveSessionByUserId(userId: string) {
   if (!session) return null;
 
   // Mirror the timeline logic for active/resumed sessions to keep structures identical
-  const spokenTurns = (session.transcripts || []).map((t: any) => ({
-    id: t.id,
-    role: t.speakerType === "USER" ? "user" : "interviewer",
-    speakerName: t.speakerName || (t.speakerType === "USER" ? "User" : "Interviewer"),
-    text: t.text,
-    timestamp: new Date(t.createdAt).getTime(),
-  }));
+  const spokenTurns = (session.transcripts || [])
+    .filter((t: any) => t.speakerType !== "AI")
+    .map((t: any) => ({
+      id: t.id,
+      role:
+        t.speakerType === "USER"
+          ? "user"
+          : t.speakerType === "PARTICIPANT"
+            ? "interviewer"
+            : "participant",
+      speakerName:
+        t.speakerName ||
+        (t.speakerType === "USER"
+          ? "You"
+          : t.speakerType === "PARTICIPANT"
+            ? "Interviewer"
+            : "Participant"),
+      text: t.text,
+      timestamp: new Date(t.createdAt).getTime(),
+    }));
 
   const aiTurns = (session.aiMessages || []).map((m: any) => ({
     id: m.id,

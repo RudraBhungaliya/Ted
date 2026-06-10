@@ -2,7 +2,8 @@ import { create } from "zustand";
 
 type HistoryTurn = {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "interviewer" | "ai";
+  speakerName: string;
   text: string;
 };
 
@@ -46,6 +47,10 @@ type InterviewState = {
   setHistory: (history: HistoryTurn[]) => void;
 
   addHistoryTurn: (turn: HistoryTurn) => void;
+
+  addTranscriptTurn: (
+    turn: Omit<HistoryTurn, "id"> & { id?: string },
+  ) => void;
 
   setSessionMode: (mode: "interview" | "meeting") => void;
 
@@ -147,6 +152,19 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   addHistoryTurn: (turn) =>
     set((state) => ({
       history: [...state.history.filter((t) => t.id !== turn.id), turn],
+    })),
+
+  addTranscriptTurn: (turn) =>
+    set((state) => ({
+      history: [
+        ...state.history,
+        {
+          id: turn.id ?? Math.random().toString(36).substring(2, 9),
+          role: turn.role,
+          speakerName: turn.speakerName,
+          text: turn.text,
+        },
+      ],
     })),
 
   setSessionMode: (sessionMode) =>

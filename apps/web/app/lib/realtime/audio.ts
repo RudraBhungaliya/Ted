@@ -1,4 +1,7 @@
-import { acquireScreenShareStream, releaseScreenShareStream } from "../../../lib/screen/capture";
+import {
+  acquireScreenShareStream,
+  releaseScreenShareStream,
+} from "../screen/capture";
 
 const TARGET_SAMPLE_RATE = 16000;
 
@@ -6,66 +9,96 @@ export class AudioEngine {
   private audioContext: AudioContext | null = null;
   private processor: ScriptProcessorNode | null = null;
   private micSource: MediaStreamAudioSourceNode | null = null;
-  private systemSource: MediaStreamAudioSourceNode | null = null;
+  private screenSource: MediaStreamAudioSourceNode | null = null;
   private merger: ChannelMergerNode | null = null;
   private micStream: MediaStream | null = null;
-  private systemStream: MediaStream | null = null;
+  private screenStream: MediaStream | null = null;
   private silentGain: GainNode | null = null;
 
   async start(onChunk: (audio: Uint8Array) => void): Promise<void> {
-    try {
-      // 1. Capture user microphone
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+    // --- Mic stream (channel 0): captured for your speech tracking only ---
+    const micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+    });
+    this.micStream = micStream;
 
-      // 2. Capture meeting platform layout sound
-      this.systemStream = await acquireScreenShareStream(true);
-    } catch (err) { 
-      console.error("Audio capture initialization failure:", err);
-      throw err;
+    // --- Screen/system audio stream (channel 1): this is what the interviewer says ---
+    let screenStream: MediaStream | null = null;
+    try {
+      screenStream = await acquireScreenShareStream(true);
+      const audioTracks = screenStream.getAudioTracks();
+      const videoTracks = screenStream.getVideoTracks();
+      console.log("[AudioEngine] Screen audio tracks:", audioTracks.length);
+      console.log("[AudioEngine] Screen video tracks:", videoTracks.length);
+
+      if (audioTracks.length === 0) {
+        console.warn(
+          "[AudioEngine] No system audio tracks found. " +
+          "Make sure to check 'Share system audio' when sharing your screen/tab.",
+        );
+      }
+    } catch (err) {
+      console.warn("[AudioEngine] Screen stream acquisition failed:", err);
     }
-    
+    this.screenStream = screenStream;
+
     this.audioContext = new AudioContext();
     await this.audioContext.resume();
 
     const inputSampleRate = this.audioContext.sampleRate;
 
-    this.micSource = this.audioContext.createMediaStreamSource(this.micStream);
-    this.systemSource = this.audioContext.createMediaStreamSource(this.systemStream);
-    
-    // 3. Create a 2-channel structural merger node
+    // Build a 2-channel merger:
+    //   Left  (index 0) = mic       → deepgram channel 0 → tracked as YOU, never triggers AI
+    //   Right (index 1) = system    → deepgram channel 1 → tracked as INTERVIEWER, triggers AI
     this.merger = this.audioContext.createChannelMerger(2);
+
+    // Channel 0: mic
+    this.micSource = this.audioContext.createMediaStreamSource(micStream);
+    this.micSource.connect(this.merger, 0, 0);
+
+    // Channel 1: system/screen audio
+    if (screenStream && screenStream.getAudioTracks().length > 0) {
+      this.screenSource = this.audioContext.createMediaStreamSource(screenStream);
+      this.screenSource.connect(this.merger, 0, 1);
+      console.log("[AudioEngine] System audio connected to channel 1.");
+    } else {
+      // Feed silence into channel 1 so the buffer shape stays consistent
+      const silenceBuffer = this.audioContext.createBuffer(1, 1, inputSampleRate);
+      const silenceSource = this.audioContext.createBufferSource();
+      silenceSource.buffer = silenceBuffer;
+      silenceSource.loop = true;
+      silenceSource.start();
+      silenceSource.connect(this.merger, 0, 1);
+      console.warn("[AudioEngine] Channel 1 filled with silence — no system audio available.");
+    }
+
+    // ScriptProcessor reads 2 input channels, outputs 2 (we discard output via silent gain)
     this.processor = this.audioContext.createScriptProcessor(4096, 2, 2);
+
     this.silentGain = this.audioContext.createGain();
     this.silentGain.gain.value = 0;
-
-    // Connect Mic to Channel 0 (Left) and System Audio to Channel 1 (Right)
-    this.micSource.connect(this.merger, 0, 0);
-    this.systemSource.connect(this.merger, 0, 1);
 
     this.merger.connect(this.processor);
     this.processor.connect(this.silentGain);
     this.silentGain.connect(this.audioContext.destination);
 
     this.processor.onaudioprocess = (event: AudioProcessingEvent) => {
-      const leftChannelMic = event.inputBuffer.getChannelData(0);
-      const rightChannelSystem = event.inputBuffer.getChannelData(1);
+      // Channel 0 = mic (you), Channel 1 = system audio (interviewer)
+      const micChannel = event.inputBuffer.getChannelData(0);
+      const systemChannel =
+        event.inputBuffer.numberOfChannels > 1
+          ? event.inputBuffer.getChannelData(1)
+          : new Float32Array(micChannel.length); // silence fallback
 
-      // Downsample both discrete channels concurrently
-      const downsampledMic = this.downsample(leftChannelMic, inputSampleRate, TARGET_SAMPLE_RATE);
-      const downsampledSystem = this.downsample(rightChannelSystem, inputSampleRate, TARGET_SAMPLE_RATE);
+      const downsampledMic = this.downsample(micChannel, inputSampleRate, TARGET_SAMPLE_RATE);
+      const downsampledSystem = this.downsample(systemChannel, inputSampleRate, TARGET_SAMPLE_RATE);
 
-      // Interleave samples sequentially: [Mic0, Sys0, Mic1, Sys1, ...]
-      const interleaved = new Float32Array(downsampledMic.length + downsampledSystem.length);
-      for (let i = 0; i < downsampledMic.length; i++) {
-        interleaved[i * 2] = downsampledMic[i];
-        interleaved[i * 2 + 1] = downsampledSystem[i];
-      }
+      // Interleave: mic(L) + system(R) → deepgram multichannel linear16
+      const interleaved = this.interleave(downsampledMic, downsampledSystem);
 
       onChunk(new Uint8Array(this.float32ToPCM16(interleaved)));
     };
@@ -74,22 +107,36 @@ export class AudioEngine {
   stop(): void {
     this.processor?.disconnect();
     this.micSource?.disconnect();
-    this.systemSource?.disconnect();
+    this.screenSource?.disconnect();
     this.merger?.disconnect();
     this.silentGain?.disconnect();
 
     this.micStream?.getTracks().forEach((t) => t.stop());
     releaseScreenShareStream();
+
     void this.audioContext?.close();
 
     this.processor = null;
     this.micSource = null;
-    this.systemSource = null;
+    this.screenSource = null;
     this.merger = null;
     this.silentGain = null;
     this.micStream = null;
-    this.systemStream = null;
+    this.screenStream = null;
     this.audioContext = null;
+  }
+
+  private interleave(left: Float32Array, right: Float32Array): Float32Array {
+    const length = left.length + right.length;
+    const result = new Float32Array(length);
+    let index = 0;
+    let inputIndex = 0;
+    while (index < length) {
+      result[index++] = left[inputIndex];
+      result[index++] = right[inputIndex];
+      inputIndex++;
+    }
+    return result;
   }
 
   private downsample(input: Float32Array, inputRate: number, outputRate: number): Float32Array {

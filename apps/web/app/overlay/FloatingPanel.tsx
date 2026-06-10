@@ -59,6 +59,7 @@ export default function FloatingPanel({
 
   // Track the lifecycle of session configuration local to this panel
   const [phase, setPhase] = useState<SessionPhase>("idle");
+  const [activeInterviewTab, setActiveInterviewTab] = useState<"answer" | "timeline">("answer");
 
   // Synchronize phase with external recording state changes
   useEffect(() => {
@@ -785,6 +786,32 @@ export default function FloatingPanel({
             </div>
           )}
 
+          {/* Tab Switcher for Interview Mode */}
+          {!isStealth && sessionMode === "interview" && (
+            <div className="flex border-b border-white/5 mb-3">
+              <button
+                onClick={() => setActiveInterviewTab("answer")}
+                className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer ${
+                  activeInterviewTab === "answer"
+                    ? "text-indigo-400 border-indigo-500"
+                    : "text-zinc-500 border-transparent hover:text-zinc-300"
+                }`}
+              >
+                Suggested Answer
+              </button>
+              <button
+                onClick={() => setActiveInterviewTab("timeline")}
+                className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer ${
+                  activeInterviewTab === "timeline"
+                    ? "text-indigo-400 border-indigo-500"
+                    : "text-zinc-500 border-transparent hover:text-zinc-300"
+                }`}
+              >
+                Chat Timeline
+              </button>
+            </div>
+          )}
+
           {/* Transcript Area */}
           <div
             ref={scrollContainerRef}
@@ -798,7 +825,7 @@ export default function FloatingPanel({
           >
             {sessionMode === "meeting" ? (
               <TranscriptView />
-            ) : (
+            ) : activeInterviewTab === "answer" ? (
               <div className="space-y-4">
                 <div>
                   <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">
@@ -810,6 +837,8 @@ export default function FloatingPanel({
                   </div>
                 </div>
               </div>
+            ) : (
+              <TranscriptView />
             )}
           </div>
 

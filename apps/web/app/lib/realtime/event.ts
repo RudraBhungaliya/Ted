@@ -32,5 +32,8 @@ export type RealtimeInboundMessage = {
     text?: string;
     token?: string;
     message?: string;
+    speakerName?: string;
+    speakerType?: "USER" | "PARTICIPANT" | "AI";
+    triggerAi?: boolean;
   };
 };

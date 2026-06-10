@@ -40,7 +40,8 @@ export async function realtimeGateway(app: FastifyInstance) {
                   ? Buffer.from(new Uint8Array(rawMessage))
                   : Buffer.from(rawMessage as string);
 
-              // Seamlessly pipes interleaved dual-channel binary down to Deepgram
+              console.log("[WS AUDIO RECEIVED]", audio.length);
+
               sendAudioToDeepgram(activeSessionId, audio);
               return;
             }

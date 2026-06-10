@@ -3,7 +3,15 @@ import { AudioEngine } from "./audio";
 import { REALTIME_EVENTS, type RealtimeInboundMessage } from "./event";
 import { useInterviewStore } from "../../features/interview/store";
 
-type TranscriptHandler = (text: string, isFinal: boolean) => void;
+type TranscriptHandler = (
+  text: string,
+  isFinal: boolean,
+  meta?: {
+    speakerName?: string;
+    speakerType?: "USER" | "PARTICIPANT" | "AI";
+    triggerAi?: boolean;
+  },
+) => void;
 type AiTokenHandler = (token: string) => void;
 type StatusHandler = (message: string) => void;
 type ErrorHandler = (message: string) => void;
@@ -69,11 +77,21 @@ export class RealtimeClient {
             );
             break;
           case REALTIME_EVENTS.transcript.partial:
-            onTranscript(inbound.payload?.text ?? "", false);
+            onTranscript(inbound.payload?.text ?? "", false, {
+              speakerName: inbound.payload?.speakerName,
+              speakerType: inbound.payload?.speakerType,
+              triggerAi: inbound.payload?.triggerAi,
+            });
             break;
           case REALTIME_EVENTS.transcript.final:
-            onTranscript(inbound.payload?.text ?? "", true);
-            onStatus?.("Thinking");
+            onTranscript(inbound.payload?.text ?? "", true, {
+              speakerName: inbound.payload?.speakerName,
+              speakerType: inbound.payload?.speakerType,
+              triggerAi: inbound.payload?.triggerAi,
+            });
+            if (inbound.payload?.triggerAi) {
+              onStatus?.("Thinking");
+            }
             break;
           case REALTIME_EVENTS.ai.start:
             onAiStart();

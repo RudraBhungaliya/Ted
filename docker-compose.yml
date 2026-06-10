@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ted-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: rudra
+      POSTGRES_PASSWORD: qwerty
+      POSTGRES_DB: ted
+    volumes:
+      - ted_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: ted-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+volumes:
+  ted_postgres_data:
