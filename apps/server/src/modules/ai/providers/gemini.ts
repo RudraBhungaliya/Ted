@@ -6,36 +6,68 @@ const ai = new GoogleGenAI({
 });
 
 export async function streamGeminiResponse(
-  sessionId: string,
-  question: string,
-  turns: any[],
-  onToken: (token: string) => void,
+  firstArg: string | any[],
+  secondArg: string | ((token: string) => void),
+  thirdArg?: any[],
+  fourthArg?: (token: string) => void,
 ) {
   try {
-    const messages = [
-      ...turns.map((turn) => ({
-        role: turn.role === "assistant" ? "model" : "user",
-        parts: [
-          {
-            text: turn.text ?? "",
-          },
-        ],
-      })),
-      {
-        role: "user",
-        parts: [
-          {
-            text: question,
-          },
-        ],
-      },
-    ];
+    let contents: any[] = [];
+    let systemInstruction = "";
+    let onToken: (token: string) => void;
 
-    const stream =
-      await ai.models.generateContentStream({
-        model: "gemini-2.5-flash",
-        contents: messages,
-      });
+    if (Array.isArray(firstArg)) {
+      const messages = firstArg;
+      onToken = secondArg as (token: string) => void;
+
+      const systemMessages = messages.filter((m) => m.role === "system");
+      systemInstruction = systemMessages.map((m) => m.content).join("\n\n");
+
+      contents = messages
+        .filter((m) => m.role !== "system")
+        .map((m) => {
+          const role =
+            m.role === "assistant" || m.role === "model" ? "model" : "user";
+          return {
+            role,
+            parts: [
+              {
+                text: m.content ?? m.text ?? "",
+              },
+            ],
+          };
+        });
+    } else {
+      const sessionId = firstArg;
+      const question = secondArg as string;
+      const turns = thirdArg ?? [];
+      onToken = fourthArg!;
+
+      contents = [
+        ...turns.map((turn) => ({
+          role: turn.role === "assistant" ? "model" : "user",
+          parts: [
+            {
+              text: turn.text ?? "",
+            },
+          ],
+        })),
+        {
+          role: "user",
+          parts: [
+            {
+              text: question,
+            },
+          ],
+        },
+      ];
+    }
+
+    const stream = await ai.models.generateContentStream({
+      model: "gemini-2.5-flash",
+      contents,
+      config: systemInstruction ? { systemInstruction } : undefined,
+    });
 
     for await (const chunk of stream) {
       const token = chunk.text;

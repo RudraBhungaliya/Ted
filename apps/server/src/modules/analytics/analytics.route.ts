@@ -156,23 +156,22 @@ export async function analyticsRoutes(app: FastifyInstance) {
 
         metrics: {
           wordCount: session.analytics?.totalWords ?? 0,
-
           fillerCount: session.analytics?.fillerCount ?? 0,
-
           confidenceScore: session.analytics?.confidenceScore ?? 0,
-
           communicationScore: session.analytics?.communicationScore ?? 0,
-
           technicalScore: session.analytics?.technicalScore ?? 0,
+          starUsage: session.analytics?.communicationScore ?? 0,
         },
 
         summary: session.summary
           ? {
+              score: session.analytics?.technicalScore ?? 0,
               overview: session.summary.overview,
-
-              keyPoints: session.summary.keyPoints,
-
-              actionItems: session.summary.actionItems,
+              strengths: session.summary.keyPoints ?? [],
+              weaknesses: (session.summary.actionItems || []).filter((item: string) => item.toLowerCase().includes("avoid") || item.toLowerCase().includes("improve") || item.toLowerCase().includes("weakness")).slice(0, 3).length > 0
+                ? (session.summary.actionItems || []).filter((item: string) => item.toLowerCase().includes("avoid") || item.toLowerCase().includes("improve") || item.toLowerCase().includes("weakness")).slice(0, 3)
+                : (session.summary.actionItems || []).slice(0, 3),
+              recommendations: session.summary.actionItems ?? [],
             }
           : null,
       }));
