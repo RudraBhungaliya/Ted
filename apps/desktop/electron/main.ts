@@ -1,13 +1,38 @@
-import { app, BrowserWindow, ipcMain, session } from "electron";
+import { app, BrowserWindow, ipcMain, session, desktopCapturer } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindow | null = null;
+let overlayWindow: BrowserWindow | null = null;
 
-function createWindow() {
-  const win = new BrowserWindow({
+function createMainWindow() {
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    frame: true,
+    transparent: false,
+    alwaysOnTop: false,
+    skipTaskbar: false,
+    title: "Ted Intelligence",
+    webPreferences: {
+      preload: join(__dirname, "preload.mjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  mainWindow.loadURL("http://localhost:3000");
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+    app.quit();
+  });
+}
+
+function createOverlayWindow() {
+  overlayWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     frame: false,
@@ -16,6 +41,7 @@ function createWindow() {
     skipTaskbar: true,
     hasShadow: false,
     backgroundColor: "#00000000",
+    show: false,
     webPreferences: {
       preload: join(__dirname, "preload.mjs"),
       contextIsolation: true,
@@ -23,13 +49,15 @@ function createWindow() {
     },
   });
 
-  win.setAlwaysOnTop(true, "screen-saver");
-  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.setIgnoreMouseEvents(false, { forward: true });
+  overlayWindow.setAlwaysOnTop(true, "screen-saver");
+  overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  overlayWindow.setIgnoreMouseEvents(false, { forward: true });
 
-  win.loadURL("http://localhost:3000/overlay");
+  overlayWindow.loadURL("http://localhost:3000/overlay");
 
-  mainWindow = win;
+  overlayWindow.on("closed", () => {
+    overlayWindow = null;
+  });
 }
 
 app.whenReady().then(() => {
@@ -51,15 +79,49 @@ app.whenReady().then(() => {
     }
   );
 
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    desktopCapturer.getSources({ types: ["screen"] }).then((sources) => {
+      const screenSource = sources[0];
+      if (screenSource) {
+        callback({ video: screenSource });
+      } else {
+        console.error("No screen capture sources found.");
+      }
+    }).catch((err) => {
+      console.error("Failed to get desktop sources:", err);
+    });
+  });
+
   ipcMain.handle("desktop:setClickThrough", (_event, enabled: boolean) => {
-    mainWindow?.setIgnoreMouseEvents(enabled, { forward: true });
+    overlayWindow?.setIgnoreMouseEvents(enabled, { forward: true });
   });
 
   ipcMain.handle("desktop:setAlwaysOnTop", (_event, enabled: boolean) => {
-    mainWindow?.setAlwaysOnTop(enabled, "screen-saver");
+    overlayWindow?.setAlwaysOnTop(enabled, "screen-saver");
   });
 
-  createWindow();
+  ipcMain.handle("desktop:showOverlay", () => {
+    if (mainWindow) {
+      mainWindow.minimize();
+    }
+    if (!overlayWindow) {
+      createOverlayWindow();
+    }
+    overlayWindow?.show();
+    overlayWindow?.focus();
+  });
+
+  ipcMain.handle("desktop:stopSession", (_event, sessionId?: string) => {
+    overlayWindow?.hide();
+    if (mainWindow) {
+      mainWindow.restore();
+      mainWindow.focus();
+      mainWindow.webContents.send("desktop:session-ended", sessionId);
+    }
+  });
+
+  createMainWindow();
+  createOverlayWindow();
 });
 
 app.on("window-all-closed", () => {
@@ -69,7 +131,7 @@ app.on("window-all-closed", () => {
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
+  if (!mainWindow) {
+    createMainWindow();
   }
-});
+});

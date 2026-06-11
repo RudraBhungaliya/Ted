@@ -124,6 +124,10 @@ export default function FloatingPanel({
   // Track the lifecycle of session configuration local to this panel
   const [phase, setPhase] = useState<SessionPhase>("idle");
 
+  // Target website selection state
+  const [targetUrl, setTargetUrl] = useState("https://leetcode.com");
+  const [customUrl, setCustomUrl] = useState("");
+
   // Synchronize phase with external recording state changes
   useEffect(() => {
     if (isRecording) {
@@ -479,6 +483,17 @@ export default function FloatingPanel({
   };
 
   const handleSelectMode = (mode: "interview" | "meeting") => {
+    let finalUrl = targetUrl.trim();
+    if (finalUrl) {
+      if (!/^https?:\/\//i.test(finalUrl)) {
+        finalUrl = "https://" + finalUrl;
+      }
+      const desktopControls = (window as any).desktopControls;
+      if (desktopControls?.navigateTo) {
+        desktopControls.navigateTo(finalUrl);
+      }
+    }
+
     if (onSetMode) onSetMode(mode);
     onStart();
     setPhase("active");
@@ -541,7 +556,7 @@ export default function FloatingPanel({
             <X className="w-4 h-4" />
           </button>
 
-          <div className="mb-6 text-center">
+          <div className="mb-4 text-center">
             <h3 className="text-sm font-bold text-zinc-100 tracking-wide mb-1">
               Select Session Mode
             </h3>
@@ -551,7 +566,64 @@ export default function FloatingPanel({
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 w-full max-w-[260px]">
+          <div className="mb-4 w-full max-w-[260px]">
+            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 font-bold text-center">
+              Interview Platform
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-1">
+              {[
+                { name: "LeetCode", url: "https://leetcode.com" },
+                { name: "HackerRank", url: "https://www.hackerrank.com" },
+                { name: "Coderbyte", url: "https://coderbyte.com" },
+                { name: "Custom", url: "custom" },
+              ].map((preset) => {
+                const isSelected =
+                  preset.url === "custom"
+                    ? targetUrl !== "https://leetcode.com" &&
+                      targetUrl !== "https://www.hackerrank.com" &&
+                      targetUrl !== "https://coderbyte.com"
+                    : targetUrl === preset.url;
+
+                return (
+                  <button
+                    key={preset.name}
+                    onClick={() => {
+                      if (preset.url === "custom") {
+                        setTargetUrl(customUrl || "https://");
+                      } else {
+                        setTargetUrl(preset.url);
+                      }
+                    }}
+                    className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg border text-center transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                        : "bg-neutral-900/50 border-white/5 text-zinc-400 hover:text-zinc-200 hover:border-white/10 hover:bg-neutral-900"
+                    }`}
+                  >
+                    {preset.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {(targetUrl !== "https://leetcode.com" &&
+              targetUrl !== "https://www.hackerrank.com" &&
+              targetUrl !== "https://coderbyte.com") && (
+              <input
+                type="text"
+                value={targetUrl === "https://" ? "" : targetUrl}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTargetUrl(val);
+                  setCustomUrl(val);
+                }}
+                placeholder="https://your-interview-url.com"
+                className="w-full mt-2 px-3 py-1.5 text-[11px] rounded-lg bg-neutral-900 border border-white/8 text-zinc-200 placeholder-zinc-600 focus:outline-hidden focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all font-mono"
+              />
+            )}
+          </div>
+
+          <div className="flex flex-col gap-2.5 w-full max-w-[260px]">
             <button
               onClick={() => handleSelectMode("interview")}
               className="flex items-center gap-3 w-full text-left p-3.5 rounded-xl border border-white/5 bg-neutral-900/50 hover:bg-neutral-900 hover:border-indigo-500/40 text-zinc-300 hover:text-white transition-all cursor-pointer group"

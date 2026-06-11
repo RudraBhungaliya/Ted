@@ -185,6 +185,11 @@ async function stopInterview() {
   }
 
   window.dispatchEvent(new Event("session-stopped"));
+
+  const desktopControls = (window as any).desktopControls;
+  if (desktopControls?.stopSession) {
+    desktopControls.stopSession(sessionId);
+  }
 }
 
 export const useInterview = () => {

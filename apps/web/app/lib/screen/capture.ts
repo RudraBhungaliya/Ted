@@ -1,4 +1,4 @@
-import { extractTextFromImage } from "./ocr";
+import { extractTextFromImage, terminateOCRWorker } from "./ocr";
 
 const DEFAULT_SCREEN_ANALYSIS_INTERVAL_MS = 2500;
 
@@ -49,7 +49,10 @@ export async function acquireScreenShareStream(audio = false) {
 
   if (!screenSharePrompt) {
     screenSharePrompt = navigator.mediaDevices.getDisplayMedia({
-      video: { frameRate: 15 },
+      video: { 
+        frameRate: 15,
+        displaySurface: "monitor",
+      } as any,
       audio,
     });
   }
@@ -165,6 +168,7 @@ export async function startScreenAnalysisLoop(
       releaseScreenShareStream();
       video.pause();
       video.srcObject = null;
+      void terminateOCRWorker();
     },
   };
 }

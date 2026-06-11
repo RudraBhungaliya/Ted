@@ -13,6 +13,22 @@ export default function Home() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [showModeModal, setShowModeModal] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    setIsDesktop(typeof window !== "undefined" && "desktopControls" in window);
+  }, []);
+
+  useEffect(() => {
+    const desktopControls = (window as any).desktopControls;
+    if (desktopControls?.onSessionEnded) {
+      const unsubscribe = desktopControls.onSessionEnded(() => {
+        // Dispatch session-stopped event so useSessions automatically refreshes
+        window.dispatchEvent(new Event("session-stopped"));
+      });
+      return unsubscribe;
+    }
+  }, []);
 
   useEffect(() => {
     // Auth checks bypassed on frontend for development testing
@@ -224,7 +240,13 @@ export default function Home() {
 
               <div>
                 <button
-                  onClick={() => setShowModeModal(true)}
+                  onClick={() => {
+                    if (isDesktop && (window as any).desktopControls?.showOverlay) {
+                      (window as any).desktopControls.showOverlay();
+                    } else {
+                      setShowModeModal(true);
+                    }
+                  }}
                   className="
                     relative
                     group
@@ -432,7 +454,7 @@ export default function Home() {
         </div>
       )}
 
-      <Overlay />
+      {!isDesktop && <Overlay />}
     </main>
   );
 }

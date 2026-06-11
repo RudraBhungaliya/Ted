@@ -30,4 +30,18 @@ contextBridge.exposeInMainWorld("desktopControls", {
   setAlwaysOnTop(enabled: boolean) {
     return ipcRenderer.invoke("desktop:setAlwaysOnTop", enabled);
   },
+  showOverlay() {
+    return ipcRenderer.invoke("desktop:showOverlay");
+  },
+  stopSession(sessionId?: string) {
+    return ipcRenderer.invoke("desktop:stopSession", sessionId);
+  },
+  onSessionEnded(callback: () => void) {
+    const listener = () => callback();
+    ipcRenderer.on("desktop:session-ended", listener);
+    return () => {
+      ipcRenderer.off("desktop:session-ended", listener);
+    };
+  },
 });
+
