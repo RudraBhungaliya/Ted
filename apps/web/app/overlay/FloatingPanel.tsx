@@ -155,6 +155,9 @@ export default function FloatingPanel({
     setIsIframe(typeof window !== "undefined" && window.parent !== window);
   }, []);
 
+  // Mouse hover click-through management for Electron transparent window
+  const [isHovered, setIsHovered] = useState(false);
+
   useEffect(() => {
     const desktopControls = (
       window as Window & {
@@ -164,8 +167,36 @@ export default function FloatingPanel({
       }
     ).desktopControls;
 
-    desktopControls?.setClickThrough?.(isStealth);
-  }, [isStealth]);
+    if (!desktopControls || !desktopControls.setClickThrough) return;
+
+    if (isStealth) {
+      desktopControls.setClickThrough(true);
+    } else {
+      // If hovered, we want to intercept mouse events (setClickThrough = false)
+      // If not hovered, we want to ignore mouse events (setClickThrough = true)
+      desktopControls.setClickThrough(!isHovered);
+    }
+  }, [isStealth, isHovered]);
+
+  // Bounding rect safety check to ensure hover toggles reliably
+  useEffect(() => {
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (!panelRef.current) return;
+      const rect = panelRef.current.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+      const inside =
+        x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+      if (inside !== isHovered) {
+        setIsHovered(inside);
+      }
+    };
+
+    window.addEventListener("mousemove", handleWindowMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleWindowMouseMove);
+    };
+  }, [isHovered]);
 
   const screenLoopRef = useRef<ScreenCaptureLoop | null>(null);
 
@@ -503,6 +534,9 @@ export default function FloatingPanel({
   if (phase === "idle") {
     return (
       <div
+        ref={panelRef}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={`${isIframe ? "absolute w-full h-full inset-0 flex items-center justify-center" : "fixed z-50 transition-all duration-300"}`}
         style={
           isIframe
@@ -534,6 +568,9 @@ export default function FloatingPanel({
   if (phase === "mode-selection") {
     return (
       <div
+        ref={panelRef}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={`z-50 rounded-2xl overflow-hidden border select-none bg-neutral-950/85 backdrop-blur-3xl border-white/12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)] ${isIframe ? "absolute w-full h-full inset-0" : "fixed"}`}
         style={
           isIframe
@@ -700,6 +737,8 @@ export default function FloatingPanel({
 
       <div
         ref={panelRef}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={`z-50 rounded-2xl overflow-hidden border select-none transition-all duration-300 ease-out
           ${isIframe ? "absolute w-full h-full inset-0" : "fixed"}
           ${
