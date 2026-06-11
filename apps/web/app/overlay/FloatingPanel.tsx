@@ -12,7 +12,6 @@ import {
   Coffee,
   Monitor,
 } from "lucide-react";
-import TranscriptView from "../components/ui/TranscriptView";
 import {
   startScreenAnalysisLoop,
   type ScreenCaptureLoop,
@@ -54,12 +53,76 @@ export default function FloatingPanel({
   );
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const shouldAutoScrollRef = useRef(true);
   const transcriptSnapshotRef = useRef("");
+  const answerRef = useRef<HTMLDivElement>(null);
+
+  // Cluely-style conversation history memory states
+  const [conversationHistory, setConversationHistory] = useState<
+    Array<{ question: string; answer: string }>
+  >([]);
+  const [currentQuestion, setCurrentQuestion] = useState("");
+
+  // Process history to sync conversationHistory and currentQuestion
+  useEffect(() => {
+    const pairs: Array<{ question: string; answer: string }> = [];
+    let currentPair: { question: string; answer: string } | null = null;
+
+    for (const turn of history) {
+      if (turn.role === "interviewer") {
+        if (currentPair) {
+          pairs.push(currentPair);
+        }
+        currentPair = { question: turn.text, answer: "" };
+      } else if (turn.role === "ai" || turn.role === "assistant") {
+        if (currentPair) {
+          currentPair.answer = turn.text;
+          pairs.push(currentPair);
+          currentPair = null;
+        }
+      }
+    }
+    if (currentPair) {
+      pairs.push(currentPair);
+    }
+
+    // Keep the latest pair pinned at top (reversed order)
+    const reversed = [...pairs].reverse();
+    setConversationHistory(reversed);
+
+    // Get the latest completed interviewer question
+    const lastInterviewer = history
+      .slice()
+      .reverse()
+      .find((t) => t.role === "interviewer");
+    if (lastInterviewer) {
+      setCurrentQuestion(lastInterviewer.text);
+    } else {
+      setCurrentQuestion("");
+    }
+  }, [history]);
+
+  // Answer display helper
+  const displayAnswer = isAiResponding
+    ? aiResponse
+    : (conversationHistory[0]?.answer || "Waiting for question...");
+
+  // Keep scroll position pinned to the top of the answer container while streaming or on question change
+  useEffect(() => {
+    if (answerRef.current) {
+      if (isAiResponding) {
+        answerRef.current.scrollTop = 0;
+      }
+    }
+  }, [displayAnswer, isAiResponding]);
+
+  useEffect(() => {
+    if (answerRef.current) {
+      answerRef.current.scrollTop = 0;
+    }
+  }, [currentQuestion]);
 
   // Track the lifecycle of session configuration local to this panel
   const [phase, setPhase] = useState<SessionPhase>("idle");
-  const [activeInterviewTab, setActiveInterviewTab] = useState<"answer" | "timeline">("answer");
 
   // Synchronize phase with external recording state changes
   useEffect(() => {
@@ -70,25 +133,6 @@ export default function FloatingPanel({
     }
   }, [isRecording]);
 
-  // Handle scrolling to detect if the user has scrolled up
-  const handleScroll = () => {
-    const container = scrollContainerRef.current;
-    if (!container) return;
-
-    const distanceFromBottom =
-      container.scrollHeight - container.scrollTop - container.clientHeight;
-    // If the user is within 50px of the bottom, allow auto-scroll. Otherwise, they scrolled up.
-    shouldAutoScrollRef.current = distanceFromBottom <= 50;
-  };
-
-  // Scroll to the bottom when content changes, if shouldAutoScrollRef.current is true
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (!container || !shouldAutoScrollRef.current) return;
-
-    container.scrollTop = container.scrollHeight;
-  }, [history, finalTranscript, partialTranscript, aiResponse]);
-
   useEffect(() => {
     transcriptSnapshotRef.current = [
       ...history.map((turn) => `${turn.role}: ${turn.text}`),
@@ -98,20 +142,6 @@ export default function FloatingPanel({
       .filter(Boolean)
       .join("\n");
   }, [history, finalTranscript, partialTranscript]);
-
-  // Reset auto-scroll and force scroll to bottom on recording/session start
-  useEffect(() => {
-    if (isRecording) {
-      shouldAutoScrollRef.current = true;
-      const timer = setTimeout(() => {
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.scrollTop =
-            scrollContainerRef.current.scrollHeight;
-        }
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [isRecording]);
 
   const [isStealth, setIsStealth] = useState(false);
   const [savedSize, setSavedSize] = useState({ width: 380, height: 480 });
@@ -648,11 +678,11 @@ export default function FloatingPanel({
         )}
 
         {/* Content container */}
-        <div className="relative z-10 w-full h-full flex flex-col p-4">
+        <div className={`relative z-10 w-full h-full flex flex-col ${isStealth ? "p-2.5" : "p-4"}`}>
           {/* Top Bar / Drag Handle */}
           <div
             onMouseDown={handleMouseDown}
-            className="flex items-center justify-between mb-3.5 select-none cursor-grab active:cursor-grabbing p-1.5 -m-1.5 rounded-xl hover:bg-white/5 transition-colors"
+            className="flex items-center justify-between mb-3 select-none cursor-grab active:cursor-grabbing p-1.5 -m-1.5 rounded-xl hover:bg-white/5 transition-colors"
           >
             {/* Grip handle indicator */}
             <div className="absolute top-1.5 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none opacity-40">
@@ -662,7 +692,7 @@ export default function FloatingPanel({
             </div>
 
             {/* Listening Wave & Status Info */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2">
               <div className="flex items-end gap-0.75 h-4 px-1">
                 <div
                   className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-1 ${!isConnected ? "paused" : ""}`}
@@ -693,10 +723,8 @@ export default function FloatingPanel({
                     </span>
                   ) : isStealth ? (
                     "Ted Stealth"
-                  ) : sessionMode === "interview" ? (
-                    "Interview Session"
                   ) : (
-                    "Meeting Session"
+                    "Interview Session"
                   )}
                 </span>
                 {!isStealth && (
@@ -708,7 +736,23 @@ export default function FloatingPanel({
             </div>
 
             {/* Window Controls */}
-            <div className="flex items-center gap-1.5 relative z-20">
+            <div className="flex items-center gap-1 relative z-20">
+              {!isStealth && (
+                <button
+                  onClick={toggleScreenAssist}
+                  className={`rounded-lg p-1.5 transition-all border border-transparent cursor-pointer flex items-center gap-1 ${
+                    screenAssistEnabled
+                      ? "text-indigo-400 bg-indigo-500/10 border-indigo-500/20"
+                      : "text-zinc-400 hover:text-zinc-100 hover:bg-white/10 hover:border-white/5"
+                  }`}
+                  title={screenAssistEnabled ? "Disable Screen Assist" : "Enable Screen Assist"}
+                >
+                  <Monitor className="w-3.5 h-3.5" />
+                  {screenAssistEnabled && (
+                    <span className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
+                  )}
+                </button>
+              )}
               <button
                 onClick={toggleStealth}
                 className="text-zinc-400 hover:text-zinc-100 hover:bg-white/10 rounded-lg p-1.5 transition-all border border-transparent hover:border-white/5 cursor-pointer"
@@ -730,116 +774,70 @@ export default function FloatingPanel({
             </div>
           </div>
 
-          {/* Control Bar (Static Label & Screen Assist Display) - Switcher removed entirely to avoid runtime updates */}
-          {!isStealth && (
-            <div className="flex items-center justify-between gap-3 p-1.5 bg-white/2 border border-white/5 rounded-xl mb-3">
-              <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-neutral-900/60 border border-white/5 select-none">
-                {sessionMode === "interview" ? (
-                  <>
-                    <Briefcase className="w-3 h-3 text-indigo-400" />
-                    <span className="text-xs text-zinc-400">
-                      Interview Mode Active
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Coffee className="w-3 h-3 text-indigo-400" />
-                    <span className="text-xs text-zinc-400">
-                      Meeting Mode Active
-                    </span>
-                  </>
-                )}
-              </div>
-
-              {/* Screen Assist Setup */}
-              <div className="relative group">
-                <button
-                  onClick={toggleScreenAssist}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold tracking-wide border transition-all ${
-                    screenAssistEnabled
-                      ? "text-indigo-200 border-indigo-500/30 bg-indigo-500/10 cursor-pointer"
-                      : "text-zinc-300 border-zinc-800/40 bg-zinc-950/20 cursor-pointer"
-                  }`}
-                >
-                  <Monitor className="w-3 h-3" />
-                  {screenAssistEnabled ? "Screen Assist On" : "Screen Assist"}
-                  <span className="bg-zinc-800 text-[8px] text-zinc-400 px-1 rounded uppercase tracking-wider scale-90 border border-zinc-700/50">
-                    {screenAssistEnabled ? "Live" : "Off"}
-                  </span>
-                </button>
-                {/* Micro tooltip */}
-                <div className="absolute right-0 bottom-full mb-1.5 hidden group-hover:block z-30 bg-neutral-900 border border-white/10 text-zinc-300 text-[9px] px-2 py-1 rounded shadow-md whitespace-nowrap">
-                  Capture the screen and send frames to Gemini
-                </div>
-              </div>
-            </div>
-          )}
-
+          {/* Screen Assist Display */}
           {screenAssistEnabled && screenAnalysis && !isStealth && (
             <div className="mb-3 rounded-xl border border-indigo-500/15 bg-indigo-500/5 p-3 text-xs text-zinc-300">
-              <div className="mb-1 font-semibold text-indigo-300">
+              <div className="mb-1 font-semibold text-indigo-300 flex items-center gap-1.5">
+                <Monitor className="w-3.5 h-3.5 text-indigo-400" />
                 Screen Insight
               </div>
-              <div className="whitespace-pre-line text-zinc-400">
+              <div className="whitespace-pre-line text-zinc-400 leading-relaxed max-h-24 overflow-y-auto custom-scrollbar">
                 {screenAnalysis}
               </div>
             </div>
           )}
 
-          {/* Tab Switcher for Interview Mode */}
-          {!isStealth && sessionMode === "interview" && (
-            <div className="flex border-b border-white/5 mb-3">
-              <button
-                onClick={() => setActiveInterviewTab("answer")}
-                className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer ${
-                  activeInterviewTab === "answer"
-                    ? "text-indigo-400 border-indigo-500"
-                    : "text-zinc-500 border-transparent hover:text-zinc-300"
-                }`}
-              >
-                Suggested Answer
-              </button>
-              <button
-                onClick={() => setActiveInterviewTab("timeline")}
-                className={`flex-1 pb-2 text-xs font-bold uppercase tracking-wider transition-colors border-b-2 cursor-pointer ${
-                  activeInterviewTab === "timeline"
-                    ? "text-indigo-400 border-indigo-500"
-                    : "text-zinc-500 border-transparent hover:text-zinc-300"
-                }`}
-              >
-                Chat Timeline
-              </button>
+          {/* Main Interview Q&A Layout (Cluely style) */}
+          <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${isStealth ? "gap-2" : "gap-3.5"}`}>
+            {/* Section 1: QUESTION */}
+            <div className={`flex-none rounded-xl border border-zinc-800 bg-zinc-900/40 ${isStealth ? "p-2" : "p-4"}`}>
+              {!isStealth && (
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5 font-bold select-none">
+                  Question
+                </div>
+              )}
+              <div className={`text-zinc-200 whitespace-pre-wrap font-medium ${isStealth ? "text-[11px] leading-snug" : "text-sm leading-relaxed"}`}>
+                {currentQuestion || "Waiting for interviewer..."}
+              </div>
             </div>
-          )}
 
-          {/* Transcript Area */}
-          <div
-            ref={scrollContainerRef}
-            onScroll={handleScroll}
-            className={`flex-1 overflow-y-auto w-full custom-scrollbar select-text
-    ${
-      isStealth
-        ? "text-xs text-zinc-400 bg-transparent py-1"
-        : "bg-black/35 rounded-xl border border-white/5 p-3 text-sm text-zinc-300"
-    }`}
-          >
-            {sessionMode === "meeting" ? (
-              <TranscriptView />
-            ) : activeInterviewTab === "answer" ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="text-xs uppercase tracking-wider text-zinc-500 mb-2">
-                    Suggested Answer
+            {/* Section 2: ANSWER */}
+            <div className={`flex-1 flex flex-col rounded-xl border border-indigo-500/15 bg-neutral-900/30 min-h-0 ${isStealth ? "p-2" : "p-4"}`}>
+              {!isStealth && (
+                <div className="flex-none text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5 font-bold select-none">
+                  Answer
+                </div>
+              )}
+              <div
+                ref={answerRef}
+                className={`flex-1 overflow-y-auto custom-scrollbar whitespace-pre-wrap text-zinc-100 font-normal ${isStealth ? "text-[11px] leading-snug" : "text-sm leading-relaxed"}`}
+              >
+                {displayAnswer}
+              </div>
+            </div>
+
+            {/* 
+              Future Session-History Rendering:
+              To render the entire question & answer history in the scrolling container,
+              replace the single displayAnswer above with the following map:
+              
+              {conversationHistory.map((pair, index) => (
+                <div key={index} className="mb-4 last:mb-0 border-b border-white/5 pb-3 last:border-b-0 last:pb-0">
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 font-semibold">
+                    Question {conversationHistory.length - index}
                   </div>
-
-                  <div className="text-zinc-200 whitespace-pre-wrap">
-                    {aiResponse || "Waiting for interviewer question..."}
+                  <div className="text-zinc-200 text-sm font-medium mb-2">
+                    {pair.question}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 font-semibold">
+                    Answer {conversationHistory.length - index}
+                  </div>
+                  <div className="text-zinc-100 text-sm leading-relaxed">
+                    {index === 0 && isAiResponding ? aiResponse : (pair.answer || "Waiting...")}
                   </div>
                 </div>
-              </div>
-            ) : (
-              <TranscriptView />
-            )}
+              ))}
+            */}
           </div>
 
           {/* Hidden children */}
