@@ -7,6 +7,53 @@ type HistoryTurn = {
   text: string;
 };
 
+function normalizeWords(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function combineTranscriptText(previous: string, next: string) {
+  const left = previous.trim();
+  const right = next.trim();
+
+  if (!left) return right;
+  if (!right) return left;
+  if (right.startsWith(left)) return right;
+  if (left.startsWith(right)) return left;
+
+  const leftWords = normalizeWords(left);
+  const rightWords = normalizeWords(right);
+  const normalizedLeft = leftWords.join(" ");
+  const normalizedRight = rightWords.join(" ");
+
+  if (normalizedRight.startsWith(normalizedLeft)) return right;
+  if (normalizedLeft.startsWith(normalizedRight)) return left;
+
+  const maxOverlap = Math.min(leftWords.length, rightWords.length);
+  for (let size = maxOverlap; size > 0; size -= 1) {
+    if (
+      leftWords.slice(-size).join(" ") ===
+      rightWords.slice(0, size).join(" ")
+    ) {
+      return `${left} ${rightWords.slice(size).join(" ")}`.trim();
+    }
+  }
+
+  return `${left} ${right}`.trim();
+}
+
+function shouldMergeTurns(previous: HistoryTurn | undefined, next: Omit<HistoryTurn, "id">) {
+  return (
+    previous &&
+    previous.role === next.role &&
+    previous.speakerName === next.speakerName
+  );
+}
+
 type InterviewState = {
   isRecording: boolean;
   isConnected: boolean;
@@ -156,15 +203,29 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
   addTranscriptTurn: (turn) =>
     set((state) => ({
-      history: [
-        ...state.history,
-        {
-          id: turn.id ?? Math.random().toString(36).substring(2, 9),
-          role: turn.role,
-          speakerName: turn.speakerName,
-          text: turn.text,
-        },
-      ],
+      history: (() => {
+        const previous = state.history[state.history.length - 1];
+
+        if (shouldMergeTurns(previous, turn)) {
+          return [
+            ...state.history.slice(0, -1),
+            {
+              ...previous,
+              text: combineTranscriptText(previous.text, turn.text),
+            },
+          ];
+        }
+
+        return [
+          ...state.history,
+          {
+            id: turn.id ?? Math.random().toString(36).substring(2, 9),
+            role: turn.role,
+            speakerName: turn.speakerName,
+            text: turn.text,
+          },
+        ];
+      })(),
     })),
 
   setSessionMode: (sessionMode) =>

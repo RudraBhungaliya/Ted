@@ -82,7 +82,7 @@ export const useSessions = () => {
     const mins = Math.floor(durSecs / 60);
     const secs = durSecs % 60;
     const durationStr =
-      session.status === "running"
+      session.status === "ACTIVE"
         ? "Running"
         : `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
 

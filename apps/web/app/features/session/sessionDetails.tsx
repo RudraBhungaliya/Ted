@@ -25,22 +25,66 @@ export function SessionDetails({
     return <div>No Session</div>;
   }
 
+  const timeline = session.timeline ?? [
+    ...(session.transcripts ?? []).map((t: any) => ({
+      id: t.id,
+      role:
+        t.speakerType === "USER"
+          ? "user"
+          : t.speakerType === "PARTICIPANT"
+            ? "interviewer"
+            : "ai",
+      speakerName:
+        t.speakerName ||
+        (t.speakerType === "USER"
+          ? "You"
+          : t.speakerType === "AI"
+            ? "TED (AI)"
+            : "Interviewer"),
+      text: t.text,
+      timestamp: new Date(t.createdAt).getTime(),
+    })),
+    ...(session.aiMessages ?? []).map((m: any) => ({
+      id: m.id,
+      role: "ai",
+      speakerName: "TED (AI)",
+      text: m.text,
+      timestamp: new Date(m.createdAt).getTime(),
+    })),
+  ].sort((a: any, b: any) => a.timestamp - b.timestamp);
+
+  const analytics = Array.isArray(session.analytics)
+    ? session.analytics[0]
+    : session.analytics;
+
+  const summary = session.summary
+    ? {
+        score:
+          session.summary.score ??
+          analytics?.technicalScore ??
+          analytics?.communicationScore ??
+          0,
+        strengths: session.summary.strengths ?? session.summary.keyPoints ?? [],
+        weaknesses: session.summary.weaknesses ?? [],
+      }
+    : null;
+
   return (
     <div>
       <h2>Summary</h2>
 
-      {session.summary && (
+      {summary && (
         <>
           <div>
             Score:
             {" "}
-            {session.summary.score}
+            {summary.score}
           </div>
 
           <div>
             Strengths:
             <ul>
-              {session.summary.strengths?.map(
+              {summary.strengths?.map(
                 (
                   item: string,
                 ) => (
@@ -55,7 +99,7 @@ export function SessionDetails({
           <div>
             Weaknesses:
             <ul>
-              {session.summary.weaknesses?.map(
+              {summary.weaknesses?.map(
                 (
                   item: string,
                 ) => (
@@ -71,48 +115,31 @@ export function SessionDetails({
 
       <h2>Transcript</h2>
 
-      {session.transcripts?.map(
-        (t: any) => (
-          <div key={t.id}>
+      {timeline.map(
+        (item: any) => (
+          <div key={item.id}>
             <strong>
-              {t.speakerName ??
-                (t.speakerType === "USER"
-                  ? "You"
-                  : t.speakerType === "PARTICIPANT"
-                    ? "Interviewer"
-                    : t.speakerType)}
+              {item.speakerName}
             </strong>
-            : {t.text}
-          </div>
-        ),
-      )}
-
-      <h2>AI Replies</h2>
-
-      {session.aiMessages?.map(
-        (m: any) => (
-          <div key={m.id}>
-            <strong>TED (AI)</strong>: {m.text}
+            : {item.text}
           </div>
         ),
       )}
 
       <h2>Analytics</h2>
 
-      {session.analytics?.map(
-        (a: any) => (
-          <div key={a.id}>
+      {analytics && (
+          <div>
             Words:
             {" "}
-            {a.totalWords}
+            {analytics.totalWords}
             {" | "}
             Confidence:
             {" "}
             {
-              a.confidenceScore
+              analytics.confidenceScore
             }
           </div>
-        ),
       )}
     </div>
   );

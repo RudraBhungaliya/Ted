@@ -321,7 +321,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <a
-                    href={`/history/${selectedSession.id}`}
+                    href={`/session/${selectedSession.id}`}
                     className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold transition-all hover:scale-105"
                   >
                     Replay Conversation

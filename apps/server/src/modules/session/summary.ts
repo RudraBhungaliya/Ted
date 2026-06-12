@@ -19,6 +19,11 @@ export async function generateSessionSummary(sessionId: string) {
             createdAt: "asc",
           },
         },
+        aiMessages: {
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
       },
     });
 
@@ -27,7 +32,7 @@ export async function generateSessionSummary(sessionId: string) {
       return;
     }
 
-    if (session.transcripts.length === 0) {
+    if (session.transcripts.length === 0 && session.aiMessages.length === 0) {
       console.log(
         `No transcripts recorded for session ${sessionId}. Storing default empty summary and analytics.`,
       );
@@ -92,7 +97,41 @@ export async function generateSessionSummary(sessionId: string) {
     );
 
     // 3. Format transcript
-    const historyText = session.transcripts
+    const transcriptHistory = session.transcripts.map((t) => ({
+      speakerName: t.speakerName,
+      text: t.text,
+      timestamp: t.createdAt.getTime(),
+      speakerType: t.speakerType,
+    }));
+
+    const aiMessageHistory = session.aiMessages.map((m) => ({
+      speakerName: "TED (AI)",
+      text: m.text,
+      timestamp: m.createdAt.getTime(),
+      speakerType: "AI",
+    }));
+
+    const legacyAiTranscriptHistory = transcriptHistory
+      .filter((t) => t.speakerType === "AI")
+      .filter((t) => {
+        return !session.aiMessages.some((m) => {
+          return (
+            m.text.trim() === t.text.trim() &&
+            Math.abs(m.createdAt.getTime() - t.timestamp) < 5000
+          );
+        });
+      });
+
+    const nonAiTranscriptHistory = transcriptHistory.filter(
+      (t) => t.speakerType !== "AI",
+    );
+
+    const historyText = [
+      ...nonAiTranscriptHistory,
+      ...aiMessageHistory,
+      ...legacyAiTranscriptHistory,
+    ]
+      .sort((a, b) => a.timestamp - b.timestamp)
       .map((t) => `${t.speakerName}: ${t.text}`)
       .join("\n");
 
