@@ -3,31 +3,42 @@ import {
     FastifyRequest,
 } from "fastify";
 import { db } from "../db/client.js";
+import { verifyToken } from "../lib/jwt.js";
+import { ACCESS_COOKIE } from "../lib/cookies.js";
+import { UnauthorizedError } from "../utils/error.js";
 
 export async function authMiddleware(
     request : FastifyRequest,
     reply : FastifyReply, 
 ) {
-    // Auth disabled for testing purposes - inject mock user session
+    const accessToken = request.cookies[ACCESS_COOKIE];
+    if (!accessToken) {
+        throw new UnauthorizedError("Unauthorized: Missing access token");
+    }
+
     try {
-        let testUser = await db.user.findFirst();
-        if (!testUser) {
-            testUser = await db.user.create({
-                data: {
-                    email: "test@example.com",
-                    fullName: "Test User",
-                    password: "dev-test-password-12345",
-                }
-            });
+        const payload = verifyToken(accessToken);
+        
+        const user = await db.user.findUnique({
+            where: { id: payload.userId },
+            select: {
+                id: true,
+                email: true,
+                fullName: true,
+            },
+        });
+
+        if (!user) {
+            throw new UnauthorizedError("Unauthorized: User not found");
         }
+
         request.user = {
-            userId: testUser.id,
+            userId: user.id,
+            email: user.email,
+            fullName: user.fullName || undefined,
         };
     } catch (err) {
-        console.error("Auth bypass database error:", err);
-        request.user = {
-            userId: "cl_test_user_id_12345",
-        };
+        throw new UnauthorizedError("Unauthorized: Invalid access token");
     }
 }
 

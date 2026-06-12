@@ -537,7 +537,7 @@ export default function FloatingPanel({
         ref={panelRef}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`${isIframe ? "absolute w-full h-full inset-0 flex items-center justify-center" : "fixed z-50 transition-all duration-300"}`}
+        className={`${isIframe ? "absolute w-full h-full inset-0 flex items-center justify-center" : "fixed z-50 transition-all"}`}
         style={
           isIframe
             ? {}
@@ -546,20 +546,32 @@ export default function FloatingPanel({
                 top: hasInitialized ? `${position.y}px` : "auto",
                 right: hasInitialized ? "auto" : "24px",
                 bottom: hasInitialized ? "auto" : "24px",
+                transition: isDragging ? "none" : "all 0.15s ease-out",
               }
         }
       >
-        <button
-          onClick={() => setPhase("mode-selection")}
-          className="flex items-center gap-2.5 px-4.5 py-2.5 rounded-full bg-neutral-900/90 backdrop-blur-xl border border-white/8 text-zinc-200 hover:text-white hover:border-indigo-500/50 hover:bg-neutral-950 shadow-[0_8px_30px_rgb(0,0,0,0.4)] hover:shadow-indigo-500/10 cursor-pointer transition-all hover:scale-105 active:scale-95 group font-semibold text-xs tracking-wide whitespace-nowrap"
-        >
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-          </span>
-          <Zap className="w-3.5 h-3.5 fill-white/10 text-indigo-400" />
-          Start Ted
-        </button>
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-950/80 backdrop-blur-xl border border-white/8 shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
+          <div
+            onMouseDown={handleMouseDown}
+            className="cursor-grab active:cursor-grabbing text-zinc-500 hover:text-zinc-300 p-1 rounded-md"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <circle cx="9" cy="5" r="1" />
+              <circle cx="9" cy="12" r="1" />
+              <circle cx="9" cy="19" r="1" />
+              <circle cx="15" cy="5" r="1" />
+              <circle cx="15" cy="12" r="1" />
+              <circle cx="15" cy="19" r="1" />
+            </svg>
+          </div>
+          <button
+            onClick={() => setPhase("mode-selection")}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 shadow-md shadow-indigo-600/20 cursor-pointer transition-all hover:scale-105 active:scale-95 font-semibold text-xs tracking-wide whitespace-nowrap"
+          >
+            <Zap className="w-3.5 h-3.5 fill-white/10 text-white" />
+            Start Ted
+          </button>
+        </div>
       </div>
     );
   }
@@ -582,10 +594,18 @@ export default function FloatingPanel({
                 top: hasInitialized ? `${position.y}px` : "auto",
                 right: hasInitialized ? "auto" : "24px",
                 bottom: hasInitialized ? "auto" : "24px",
+                transition: isDragging || isResizing ? "none" : "all 0.15s ease-out",
               }
         }
       >
         <div className="w-full h-full flex flex-col p-6 items-center justify-center relative">
+          <div
+            onMouseDown={handleMouseDown}
+            className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing flex items-center justify-center"
+          >
+            <div className="w-8 h-1 bg-white/15 rounded-full" />
+          </div>
+
           <button
             onClick={() => setPhase("idle")}
             className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-200 p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
@@ -603,62 +623,7 @@ export default function FloatingPanel({
             </p>
           </div>
 
-          <div className="mb-4 w-full max-w-[260px]">
-            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-2 font-bold text-center">
-              Interview Platform
-            </div>
-            <div className="grid grid-cols-2 gap-2 mb-1">
-              {[
-                { name: "LeetCode", url: "https://leetcode.com" },
-                { name: "HackerRank", url: "https://www.hackerrank.com" },
-                { name: "Coderbyte", url: "https://coderbyte.com" },
-                { name: "Custom", url: "custom" },
-              ].map((preset) => {
-                const isSelected =
-                  preset.url === "custom"
-                    ? targetUrl !== "https://leetcode.com" &&
-                      targetUrl !== "https://www.hackerrank.com" &&
-                      targetUrl !== "https://coderbyte.com"
-                    : targetUrl === preset.url;
 
-                return (
-                  <button
-                    key={preset.name}
-                    onClick={() => {
-                      if (preset.url === "custom") {
-                        setTargetUrl(customUrl || "https://");
-                      } else {
-                        setTargetUrl(preset.url);
-                      }
-                    }}
-                    className={`px-3 py-1.5 text-[11px] font-semibold rounded-lg border text-center transition-all cursor-pointer ${
-                      isSelected
-                        ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-600/20"
-                        : "bg-neutral-900/50 border-white/5 text-zinc-400 hover:text-zinc-200 hover:border-white/10 hover:bg-neutral-900"
-                    }`}
-                  >
-                    {preset.name}
-                  </button>
-                );
-              })}
-            </div>
-
-            {(targetUrl !== "https://leetcode.com" &&
-              targetUrl !== "https://www.hackerrank.com" &&
-              targetUrl !== "https://coderbyte.com") && (
-              <input
-                type="text"
-                value={targetUrl === "https://" ? "" : targetUrl}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setTargetUrl(val);
-                  setCustomUrl(val);
-                }}
-                placeholder="https://your-interview-url.com"
-                className="w-full mt-2 px-3 py-1.5 text-[11px] rounded-lg bg-neutral-900 border border-white/8 text-zinc-200 placeholder-zinc-600 focus:outline-hidden focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 transition-all font-mono"
-              />
-            )}
-          </div>
 
           <div className="flex flex-col gap-2.5 w-full max-w-[260px]">
             <button

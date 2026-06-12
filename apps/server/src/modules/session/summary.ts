@@ -156,6 +156,7 @@ Evaluate:
 
 Provide the response in the following JSON format:
 {
+  "title": "string (a short, descriptive 3-5 word title for the meeting)",
   "overview": "string",
   "keyPoints": ["string"],
   "actionItems": ["string"],
@@ -185,6 +186,7 @@ Evaluate:
 
 Provide the response in the following JSON format:
 {
+  "title": "string (a short, descriptive 3-5 word title for the interview topic)",
   "overview": "string",
   "keyPoints": ["string"],
   "actionItems": ["string"],
@@ -213,6 +215,7 @@ Return ONLY valid JSON.
     }
 
     const json = JSON.parse(contentText) as {
+      title?: string;
       overview: string;
       keyPoints: string[];
       actionItems: string[];
@@ -220,6 +223,13 @@ Return ONLY valid JSON.
       communicationScore?: number;
       technicalScore?: number;
     };
+
+    if (json.title) {
+      await db.session.update({
+        where: { id: sessionId },
+        data: { title: json.title },
+      });
+    }
 
     // 5. Save to PostgreSQL db for summary
     await db.sessionSummary.upsert({
@@ -269,6 +279,13 @@ Return ONLY valid JSON.
     console.error("Failed to generate session summary and analytics:", error);
     // Fallback summary and analytics on failure so we don't crash
     try {
+      const existing = await db.session.findUnique({ where: { id: sessionId } });
+      const fallbackTitle = existing?.mode === "MEETING" ? "Quick Meeting Session" : "Quick Interview Session";
+      await db.session.update({
+        where: { id: sessionId },
+        data: { title: fallbackTitle },
+      });
+
       await db.sessionSummary.upsert({
         where: {
           sessionId,

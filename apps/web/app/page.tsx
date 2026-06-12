@@ -31,9 +31,30 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Auth checks bypassed on frontend for development testing
-    setUser({ fullName: "Test User", email: "test@example.com" });
-    setAuthLoading(false);
+    async function checkAuth() {
+      try {
+        const apiUrl =
+          process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
+          "http://localhost:4000";
+        const response = await fetch(`${apiUrl}/api/auth/me`, {
+          credentials: "include",
+        });
+        if (!response.ok) {
+          throw new Error("Unauthorized");
+        }
+        const resJson = await response.json();
+        if (resJson.success && resJson.data) {
+          setUser(resJson.data);
+        } else {
+          throw new Error("Unauthorized");
+        }
+      } catch (err) {
+        window.location.href = "/login";
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+    void checkAuth();
   }, []);
 
   const handleLogout = async () => {
@@ -95,7 +116,7 @@ export default function Home() {
                 <Zap className="text-white w-4 h-4 fill-white/10" />
               </div>
               <span className="font-bold text-lg text-white">
-                Ted Intelligence
+                Ted
               </span>
             </div>
             <div className="flex items-center gap-6 font-medium">
@@ -128,56 +149,11 @@ export default function Home() {
 
           <div
             className="
-              flex
-              justify-center
-              pt-8
-              pb-6
-              relative
-              z-10
-            "
-          >
-            <a
-              href="#"
-              className="
-                group
-                flex
-                items-center
-                gap-2
-                rounded-full
-                bg-white/5
-                border
-                border-white/10
-                text-indigo-400
-                px-4
-                py-1.5
-                text-sm
-                font-medium
-                hover:bg-white/10
-                transition-all
-                shadow-sm
-              "
-            >
-              <span>
-                Low-latency mode for <strong className="text-white">Ted</strong>
-              </span>
-
-              <ArrowUpRight
-                className="
-                  w-4
-                  h-4
-                  group-hover:translate-x-0.5
-                  group-hover:-translate-y-0.5
-                  transition-transform
-                "
-              />
-            </a>
-          </div>
-
-          <div
-            className="
               max-w-2xl
               mx-auto
               px-6
+              pt-12
+              pb-4
               relative
               z-10
             "
@@ -188,54 +164,21 @@ export default function Home() {
                 items-center
                 justify-between
                 mb-10
+                pb-8
+                border-b
+                border-white/[0.04]
               "
             >
-              <div className="flex items-center gap-5">
-                <div
-                  className="
-                    flex
-                    items-center
-                    gap-3
-                  "
-                >
-                  <div
-                    className="
-                      w-10
-                      h-10
-                      rounded-xl
-                      bg-linear-to-br
-                      from-indigo-500
-                      to-indigo-600
-                      flex
-                      items-center
-                      justify-center
-                      shadow-lg
-                      shadow-indigo-500/30
-                    "
-                  >
-                    <Zap className="text-white w-5 h-5 fill-white/20" />
-                  </div>
-
-                  <h1 className="text-3xl font-bold text-white tracking-tight">
-                    Ted
-                  </h1>
-                </div>
-
-                <button
-                  className="
-                    p-2.5
-                    rounded-xl
-                    bg-white/5
-                    hover:bg-white/10
-                    transition-colors
-                    text-zinc-400
-                    border
-                    border-white/10
-                    shadow-sm
-                  "
-                >
-                  <Activity className="w-4 h-4" />
-                </button>
+              <div>
+                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block mb-1">
+                  AI Co-Pilot Workspace
+                </span>
+                <h1 className="text-2xl font-extrabold text-white tracking-tight">
+                  Welcome back, {user?.fullName?.split(" ")[0] || "User"}
+                </h1>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Start a new session or review your performance metrics below.
+                </p>
               </div>
 
               <div>
@@ -252,21 +195,21 @@ export default function Home() {
                     group
                     flex
                     items-center
-                    gap-3
-                    px-8
-                    py-3.5
+                    gap-2.5
+                    px-6
+                    py-3
                     rounded-xl
                     bg-indigo-600
                     text-white
-                    font-bold
-                    text-base
+                    font-semibold
+                    text-sm
                     overflow-hidden
                     transition-all
-                    hover:scale-[1.02]
-                    active:scale-[0.98]
+                    hover:scale-[1.01]
+                    active:scale-[0.99]
                     shadow-lg
-                    shadow-indigo-500/25
-                    hover:shadow-indigo-500/45
+                    shadow-indigo-500/20
+                    hover:shadow-indigo-500/35
                     cursor-pointer
                   "
                 >
@@ -275,7 +218,7 @@ export default function Home() {
                       absolute
                       inset-0
                       bg-linear-to-r
-                      from-indigo-400
+                      from-indigo-500
                       to-indigo-600
                       opacity-0
                       group-hover:opacity-100
@@ -283,50 +226,47 @@ export default function Home() {
                     "
                   />
 
-                  <Mic className="w-5 h-5 relative z-10" />
-                  <span className="relative z-10">Start Ted</span>
+                  <Mic className="w-4 h-4 relative z-10" />
+                  <span className="relative z-10">Start Session</span>
                 </button>
               </div>
             </div>
 
-            <div
-              className="
-                mb-12
-                p-4
-                rounded-xl
-                border
-                border-indigo-500/20
-                bg-indigo-500/5
-                text-indigo-300
-                text-sm
-                flex
-                items-center
-                gap-3
-                shadow-sm
-              "
-            >
-              <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-              {error ??
-                "Ready for realtime microphone questions and instant text answers."}
-            </div>
+            {error && (
+              <div
+                className="
+                  mb-8
+                  p-3.5
+                  rounded-xl
+                  border
+                  border-red-500/20
+                  bg-red-500/5
+                  text-red-400
+                  text-xs
+                  flex
+                  items-center
+                  gap-2.5
+                  shadow-sm
+                "
+              >
+                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                {error}
+              </div>
+            )}
 
             <div
               className="
                 bg-neutral-900/40
                 backdrop-blur-xl
                 border
-                border-white/6
+                border-white/[0.06]
                 rounded-2xl
                 p-6
                 shadow-2xl
-                shadow-black/40
               "
             >
-              <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-white mb-6">
                 Recent Sessions
-                <span className="px-2 py-0.5 rounded-md bg-neutral-800 text-xs font-medium text-zinc-400 border border-white/5">
-                  Local DB
-                </span>
               </h2>
 
               {isLoading ? (

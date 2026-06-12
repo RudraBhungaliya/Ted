@@ -1,5 +1,5 @@
 // API client factory with centralized configuration
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api`;
 
 export class ApiClient {
   private baseUrl: string;
@@ -28,10 +28,18 @@ export class ApiClient {
     const response = await fetch(url, {
       ...options,
       headers,
+      credentials: "include",
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`);
+      let errorMessage = `API Error: ${response.statusText}`;
+      try {
+        const errorData = await response.json() as any;
+        if (errorData && errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch (_) {}
+      throw new Error(errorMessage);
     }
 
     return response.json() as Promise<T>;
