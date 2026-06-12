@@ -3,6 +3,70 @@ import { SessionState } from "./types.js";
 import type { ConversationTurn } from "../ai/types.js";
 import { db } from "../../db/client.js";
 
+const SAME_ROLE_MERGE_WINDOW_MS = 30_000;
+
+function normalizeWords(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function combineTranscriptText(previous: string, next: string) {
+  const left = previous.trim();
+  const right = next.trim();
+
+  if (!left) return right;
+  if (!right) return left;
+  if (right.startsWith(left)) return right;
+  if (left.startsWith(right)) return left;
+
+  const leftWords = normalizeWords(left);
+  const rightWords = normalizeWords(right);
+  const normalizedLeft = leftWords.join(" ");
+  const normalizedRight = rightWords.join(" ");
+
+  if (normalizedRight.startsWith(normalizedLeft)) return right;
+  if (normalizedLeft.startsWith(normalizedRight)) return left;
+
+  const maxOverlap = Math.min(leftWords.length, rightWords.length);
+  for (let size = maxOverlap; size > 0; size -= 1) {
+    if (
+      leftWords.slice(-size).join(" ") ===
+      rightWords.slice(0, size).join(" ")
+    ) {
+      return `${left} ${rightWords.slice(size).join(" ")}`.trim();
+    }
+  }
+
+  return `${left} ${right}`.trim();
+}
+
+function addConversationTurn(turns: ConversationTurn[], turn: ConversationTurn) {
+  const previous = turns[turns.length - 1];
+
+  if (
+    previous &&
+    previous.role === turn.role &&
+    turn.timestamp - previous.timestamp <= SAME_ROLE_MERGE_WINDOW_MS
+  ) {
+    previous.text = combineTranscriptText(previous.text, turn.text);
+    previous.timestamp = turn.timestamp;
+    return;
+  }
+
+  turns.push(turn);
+}
+
+function mergeConversationTurns(turns: ConversationTurn[]) {
+  return turns.reduce<ConversationTurn[]>((merged, turn) => {
+    addConversationTurn(merged, { ...turn });
+    return merged;
+  }, []);
+}
+
 class RealtimeManager {
   private sessions = new Map<string, SessionState>();
 
@@ -64,8 +128,26 @@ class RealtimeManager {
       timestamp: m.createdAt.getTime(),
     }));
 
-    const turns = [...interviewerTurns, ...aiTurns].sort(
-      (a, b) => a.timestamp - b.timestamp,
+    const legacyAiTranscriptTurns: ConversationTurn[] = session.transcripts
+      .filter((t) => t.speakerType === "AI")
+      .filter((t) => {
+        return !session.aiMessages.some((m) => {
+          return (
+            m.text.trim() === t.text.trim() &&
+            Math.abs(m.createdAt.getTime() - t.createdAt.getTime()) < 5000
+          );
+        });
+      })
+      .map((t) => ({
+        role: "assistant",
+        text: t.text,
+        timestamp: t.createdAt.getTime(),
+      }));
+
+    const turns = mergeConversationTurns(
+      [...interviewerTurns, ...aiTurns, ...legacyAiTranscriptTurns].sort(
+        (a, b) => a.timestamp - b.timestamp,
+      ),
     );
     const mode = session.mode === "MEETING" ? "meeting" : "interview";
 
@@ -87,9 +169,10 @@ class RealtimeManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    session.pendingUserText = session.pendingUserText
-      ? `${session.pendingUserText} ${text}`.trim()
-      : text.trim();
+    session.pendingUserText = combineTranscriptText(
+      session.pendingUserText,
+      text,
+    );
   }
 
   commitUserTurn(sessionId: string): string {
@@ -99,7 +182,7 @@ class RealtimeManager {
     }
 
     const text = session.pendingUserText.trim();
-    session.turns.push({
+    addConversationTurn(session.turns, {
       role: "user",
       text,
       timestamp: Date.now(),
@@ -162,7 +245,7 @@ class RealtimeManager {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    session.turns.push({
+    addConversationTurn(session.turns, {
       role: "user",
       text: text.trim(),
       timestamp: Date.now(),
@@ -182,7 +265,7 @@ class RealtimeManager {
 
     const fullResponse = session.currentAiTokens.join("");
     if (fullResponse.trim()) {
-      session.turns.push({
+      addConversationTurn(session.turns, {
         role: "assistant",
         text: fullResponse.trim(),
         timestamp: Date.now(),

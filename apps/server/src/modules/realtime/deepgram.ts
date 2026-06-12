@@ -62,9 +62,15 @@ export function initializeDeepgramSession(sessionId: string) {
 
   connection.on(LiveTranscriptionEvents.Transcript, async (data: any) => {
     console.log(
-  "[DEEPGRAM RAW]",
-  JSON.stringify(data),
-);
+      "[DG RAW]",
+      JSON.stringify({
+        channel_index: data.channel_index,
+        speech_final: data.speech_final,
+        is_final: data.is_final,
+        transcript:
+          data.channel?.alternatives?.[0]?.transcript,
+      })
+    );
     const channelAlternatives = data.channel?.alternatives?.[0];
     const text = channelAlternatives?.transcript?.trim();
     const isFinal = data.is_final;
@@ -72,12 +78,12 @@ export function initializeDeepgramSession(sessionId: string) {
     const currentSession = realtimeManager.getSession(sessionId);
     const isMeetingMode = currentSession?.mode === "meeting";
 
-    // Trigger speech_final flush only from the interviewer channel (1)
-    if (data.speech_final && channelIndex === 1) {
-      void emitSpeechFinal(sessionId);
+    if (!text) {
+      if (data.speech_final && channelIndex === 1) {
+        void emitSpeechFinal(sessionId);
+      }
+      return;
     }
-
-    if (!text) return;
 
     if (channelIndex === 0) {
       // ─────────────────────────────────────────────────────────────────────
@@ -130,10 +136,8 @@ export function initializeDeepgramSession(sessionId: string) {
           triggerAi: true, // ← ALWAYS trigger AI from system audio
         });
 
-        // In interview mode, also flush the speech_final to kick off AI immediately
-        if (!isMeetingMode) {
-          void emitSpeechFinal(sessionId);
-        }
+        // Debounce the AI trigger so fragmented final chunks become one question.
+        void emitSpeechFinal(sessionId);
       } else if (isMeetingMode) {
         // Partial captions for interviewer in meeting mode
         emitTranscriptEvent(sessionId, {

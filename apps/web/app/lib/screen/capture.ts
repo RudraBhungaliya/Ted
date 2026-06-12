@@ -30,52 +30,83 @@ export type ScreenCaptureLoop = {
   stop: () => void;
 };
 
+/**
+ * Acquires (or reuses) a single screen-share stream that ALWAYS includes audio.
+ *
+ * IMPORTANT: We always request audio:true on the underlying getDisplayMedia call,
+ * regardless of the `audio` param, so that:
+ *  - The user is only ever prompted ONCE per session (no double prompts)
+ *  - OCR (video-only consumers) and AudioEngine (audio consumer) share the
+ *    exact same stream/surface — they stay in sync
+ *  - "Share system audio" (YouTube, Spotify, YT Music, anything) is captured
+ *    from the very first prompt, no matter which consumer asks first
+ *
+ * The `audio` param is now only used to decide whether the CALLER cares about
+ * audio tracks being present — it no longer changes the getDisplayMedia request.
+ */
 export async function acquireScreenShareStream(audio = false) {
-  if (
-    screenShareStream &&
-    (!audio || screenShareStream.getAudioTracks().length > 0)
-  ) {
+  if (screenShareStream) {
     screenShareConsumers += 1;
     return screenShareStream;
   }
 
-  if (
-    screenShareStream &&
-    audio &&
-    screenShareStream.getAudioTracks().length === 0
-  ) {
-    releaseScreenShareStream();
-  }
-
   if (!screenSharePrompt) {
     screenSharePrompt = navigator.mediaDevices.getDisplayMedia({
-      video: { 
+      // No displaySurface constraint: lets Chrome offer Tab / Window / Entire
+      // Screen, and lets the user pick whichever supports system audio best.
+      video: {
         frameRate: 15,
-        displaySurface: "monitor",
-      } as any,
-      audio,
-    });
+      },
+      // ALWAYS request audio so OCR-only callers don't lock in an audio-less
+      // stream that AudioEngine would then have to re-prompt for.
+      audio: {
+        // These constraints are advisory; Chrome decides what it can deliver
+        // based on the surface picked (tab/window/screen) and user checkbox.
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
+    } as DisplayMediaStreamOptions);
   }
 
   screenShareStream = await screenSharePrompt;
   screenSharePrompt = null;
   screenShareConsumers = 1;
 
+  const audioTracks = screenShareStream.getAudioTracks();
+  console.log("[ScreenCapture] Stream acquired. Audio tracks:", audioTracks.length);
+
+  if (audio && audioTracks.length === 0) {
+    console.warn(
+      "[ScreenCapture] No system audio captured. " +
+      "In the share dialog, make sure 'Share tab audio' / 'Share system audio' is checked, " +
+      "and prefer sharing a 'Chrome Tab' or 'Window' rather than 'Entire Screen' for more reliable audio on Windows.",
+    );
+  }
+
+  // If a track ends (user clicks "Stop sharing"), fully reset state.
+  screenShareStream.getTracks().forEach((track) => {
+    track.addEventListener("ended", () => {
+      releaseScreenShareStream(true);
+    });
+  });
+
   return screenShareStream;
 }
 
-export function releaseScreenShareStream() {
-  if (screenShareConsumers > 0) {
+export function releaseScreenShareStream(force = false) {
+  if (!force && screenShareConsumers > 0) {
     screenShareConsumers -= 1;
   }
 
-  if (screenShareConsumers > 0) {
+  if (!force && screenShareConsumers > 0) {
     return;
   }
 
   screenShareStream?.getTracks().forEach((track) => track.stop());
   screenShareStream = null;
   screenSharePrompt = null;
+  screenShareConsumers = 0;
 }
 
 async function captureFrame(video: HTMLVideoElement) {
@@ -104,6 +135,8 @@ async function captureFrame(video: HTMLVideoElement) {
 export async function startScreenAnalysisLoop(
   options: ScreenCaptureLoopOptions,
 ): Promise<ScreenCaptureLoop> {
+  // Note: always acquires the audio-inclusive stream now (see above);
+  // this consumer just doesn't use the audio tracks itself.
   const stream = await acquireScreenShareStream(false);
 
   const video = document.createElement("video");

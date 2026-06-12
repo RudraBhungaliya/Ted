@@ -1,6 +1,142 @@
 import { db } from "../../db/client.js";
 import { generateSessionSummary } from "./summary.js";
 
+type SessionWithChat = Awaited<ReturnType<typeof db.session.findUnique>> & {
+  transcripts?: any[];
+  aiMessages?: any[];
+};
+
+type TimelineTurn = {
+  id: string;
+  role: "user" | "interviewer" | "participant" | "ai";
+  speakerName: string;
+  text: string;
+  timestamp: number;
+};
+
+const SAME_SPEAKER_MERGE_WINDOW_MS = 30_000;
+
+function normalizeWords(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function combineTranscriptText(previous: string, next: string) {
+  const left = previous.trim();
+  const right = next.trim();
+
+  if (!left) return right;
+  if (!right) return left;
+  if (right.startsWith(left)) return right;
+  if (left.startsWith(right)) return left;
+
+  const leftWords = normalizeWords(left);
+  const rightWords = normalizeWords(right);
+  const normalizedLeft = leftWords.join(" ");
+  const normalizedRight = rightWords.join(" ");
+
+  if (normalizedRight.startsWith(normalizedLeft)) {
+    return right;
+  }
+
+  if (normalizedLeft.startsWith(normalizedRight)) {
+    return left;
+  }
+
+  const maxOverlap = Math.min(leftWords.length, rightWords.length);
+  for (let size = maxOverlap; size > 0; size -= 1) {
+    const leftSuffix = leftWords.slice(-size).join(" ");
+    const rightPrefix = rightWords.slice(0, size).join(" ");
+
+    if (leftSuffix === rightPrefix) {
+      return `${left} ${rightWords.slice(size).join(" ")}`.trim();
+    }
+  }
+
+  return `${left} ${right}`.trim();
+}
+
+function mergeAdjacentTurns(turns: TimelineTurn[]) {
+  return turns.reduce<TimelineTurn[]>((merged, turn) => {
+    const previous = merged[merged.length - 1];
+
+    if (
+      previous &&
+      previous.role === turn.role &&
+      previous.speakerName === turn.speakerName &&
+      turn.timestamp - previous.timestamp <= SAME_SPEAKER_MERGE_WINDOW_MS
+    ) {
+      previous.id = `${previous.id}:${turn.id}`;
+      previous.text = combineTranscriptText(previous.text, turn.text);
+      return merged;
+    }
+
+    merged.push({ ...turn });
+    return merged;
+  }, []);
+}
+
+function mapSessionTimeline(session: SessionWithChat) {
+  const spokenTurns = (session?.transcripts || [])
+    .filter((t: any) => t.speakerType !== "AI")
+    .map((t: any) => ({
+      id: t.id,
+      role: (t.speakerType === "USER"
+        ? "user"
+        : t.speakerType === "PARTICIPANT"
+          ? "interviewer"
+          : "participant") as TimelineTurn["role"],
+      speakerName:
+        t.speakerName ||
+        (t.speakerType === "USER"
+          ? "You"
+          : t.speakerType === "PARTICIPANT"
+            ? "Interviewer"
+            : "Participant"),
+      text: t.text,
+      timestamp: new Date(t.createdAt).getTime(),
+    }));
+
+  const aiTurns = (session?.aiMessages || []).map((m: any) => ({
+    id: m.id,
+    role: "ai" as const,
+    speakerName: "TED (AI)",
+    text: m.text,
+    timestamp: new Date(m.createdAt).getTime(),
+  }));
+
+  const legacyAiTranscriptTurns = (session?.transcripts || [])
+    .filter((t: any) => t.speakerType === "AI")
+    .filter((t: any) => {
+      const transcriptTime = new Date(t.createdAt).getTime();
+
+      return !(session?.aiMessages || []).some((m: any) => {
+        const messageTime = new Date(m.createdAt).getTime();
+        return (
+          m.text.trim() === t.text.trim() &&
+          Math.abs(messageTime - transcriptTime) < 5000
+        );
+      });
+    })
+    .map((t: any) => ({
+      id: t.id,
+      role: "ai" as const,
+      speakerName: t.speakerName || "TED (AI)",
+      text: t.text,
+      timestamp: new Date(t.createdAt).getTime(),
+    }));
+
+  const orderedTurns = [...spokenTurns, ...aiTurns, ...legacyAiTranscriptTurns].sort(
+    (a, b) => a.timestamp - b.timestamp,
+  );
+
+  return mergeAdjacentTurns(orderedTurns);
+}
+
 export async function createSession(
   userId: string,
   mode: "INTERVIEW" | "MEETING",
@@ -75,46 +211,9 @@ export async function getSessionById(sessionId: string) {
 
   if (!session) return null;
 
-  // 1. Map human/system speaker transcripts to a standard format
-  const spokenTurns = (session.transcripts || [])
-    .filter((t: any) => t.speakerType !== "AI")
-    .map((t: any) => ({
-      id: t.id,
-      role:
-        t.speakerType === "USER"
-          ? "user"
-          : t.speakerType === "PARTICIPANT"
-            ? "interviewer"
-            : "participant",
-      speakerName:
-        t.speakerName ||
-        (t.speakerType === "USER"
-          ? "You"
-          : t.speakerType === "PARTICIPANT"
-            ? "Interviewer"
-            : "Participant"),
-      text: t.text,
-      timestamp: new Date(t.createdAt).getTime(),
-    }));
-
-  // 2. Map generated AI messages to the same structure
-  const aiTurns = (session.aiMessages || []).map((m: any) => ({
-    id: m.id,
-    role: "ai",
-    speakerName: "TED (AI)",
-    text: m.text,
-    timestamp: new Date(m.createdAt).getTime(),
-  }));
-
-  // 3. Interleave and sort strictly by historical timeline order
-  const timeline = [...spokenTurns, ...aiTurns].sort(
-    (a, b) => a.timestamp - b.timestamp
-  );
-
-  // Return the session object decorated with our interleaved timeline array
   return {
     ...session,
-    timeline,
+    timeline: mapSessionTimeline(session),
   };
 }
 
@@ -130,6 +229,13 @@ export async function getUserSessions(
     },
     include: {
       summary: true,
+      analytics: true,
+      _count: {
+        select: {
+          transcripts: true,
+          aiMessages: true,
+        },
+      },
     },
     orderBy: {
       startedAt: "desc",
@@ -163,42 +269,8 @@ export async function getActiveSessionByUserId(userId: string) {
 
   if (!session) return null;
 
-  // Mirror the timeline logic for active/resumed sessions to keep structures identical
-  const spokenTurns = (session.transcripts || [])
-    .filter((t: any) => t.speakerType !== "AI")
-    .map((t: any) => ({
-      id: t.id,
-      role:
-        t.speakerType === "USER"
-          ? "user"
-          : t.speakerType === "PARTICIPANT"
-            ? "interviewer"
-            : "participant",
-      speakerName:
-        t.speakerName ||
-        (t.speakerType === "USER"
-          ? "You"
-          : t.speakerType === "PARTICIPANT"
-            ? "Interviewer"
-            : "Participant"),
-      text: t.text,
-      timestamp: new Date(t.createdAt).getTime(),
-    }));
-
-  const aiTurns = (session.aiMessages || []).map((m: any) => ({
-    id: m.id,
-    role: "ai",
-    speakerName: "TED (AI)",
-    text: m.text,
-    timestamp: new Date(m.createdAt).getTime(),
-  }));
-
-  const timeline = [...spokenTurns, ...aiTurns].sort(
-    (a, b) => a.timestamp - b.timestamp
-  );
-
   return {
     ...session,
-    timeline,
+    timeline: mapSessionTimeline(session),
   };
 }

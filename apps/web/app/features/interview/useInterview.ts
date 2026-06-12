@@ -107,7 +107,11 @@ async function startInterview() {
     }
 
     const data = await response.json();
-    const realtimeSessionId = data.session.id;
+    const realtimeSessionId = data?.session?.id;
+
+    if (!realtimeSessionId) {
+      throw new Error("Session creation returned no session id.");
+    }
 
     useInterviewStore.getState().clear();
     useInterviewStore.getState().start(realtimeSessionId);

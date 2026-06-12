@@ -15,6 +15,14 @@ export class AudioEngine {
   private screenStream: MediaStream | null = null;
   private silentGain: GainNode | null = null;
 
+  private logCounter = 0;
+
+  private rms(buf: Float32Array): number {
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+    return Math.sqrt(sum / buf.length);
+  }
+
   async start(onChunk: (audio: Uint8Array) => void): Promise<void> {
     // --- Mic stream (channel 0): captured for your speech tracking only ---
     const micStream = await navigator.mediaDevices.getUserMedia({
@@ -96,6 +104,16 @@ export class AudioEngine {
 
       const downsampledMic = this.downsample(micChannel, inputSampleRate, TARGET_SAMPLE_RATE);
       const downsampledSystem = this.downsample(systemChannel, inputSampleRate, TARGET_SAMPLE_RATE);
+
+      // ── DIAGNOSTIC: log signal energy every ~1s to confirm both channels carry real audio ──
+      this.logCounter++;
+      if (this.logCounter % 12 === 0) { // ~every 1s at 4096-sample buffers @ ~48kHz
+        const micEnergy = this.rms(downsampledMic);
+        const sysEnergy = this.rms(downsampledSystem);
+        console.log(
+          `[AudioEngine] mic RMS=${micEnergy.toFixed(4)}  system RMS=${sysEnergy.toFixed(4)}`,
+        );
+      }
 
       // Interleave: mic(L) + system(R) → deepgram multichannel linear16
       const interleaved = this.interleave(downsampledMic, downsampledSystem);

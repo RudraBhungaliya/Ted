@@ -41,7 +41,7 @@ export default function SessionDetailPage({
       try {
         const data = await getSession(sessionId);
 
-        setSession(data.session);
+        setSession(data);
       } catch (err) {
         console.error(err);
       } finally {
@@ -61,22 +61,26 @@ export default function SessionDetailPage({
   }
 
   const messages = (session.timeline ?? [
-    ...session.transcripts.map((transcript: Transcript & { speakerName?: string; speakerType?: string }) => ({
+    ...(session.transcripts ?? []).map((transcript: Transcript & { speakerName?: string; speakerType?: string }) => ({
       id: transcript.id,
       role:
         transcript.speakerType === "USER"
           ? "user"
           : transcript.speakerType === "PARTICIPANT"
             ? "interviewer"
-            : "user",
+            : "ai",
       speakerName:
         transcript.speakerName ||
         (transcript as { speaker?: string }).speaker ||
-        (transcript.speakerType === "USER" ? "You" : "Interviewer"),
+        (transcript.speakerType === "USER"
+          ? "You"
+          : transcript.speakerType === "AI"
+            ? "TED (AI)"
+            : "Interviewer"),
       text: transcript.text,
       createdAt: transcript.createdAt,
     })),
-    ...session.aiMessages.map((message: AiMessage) => ({
+    ...(session.aiMessages ?? []).map((message: AiMessage) => ({
       id: message.id,
       role: "ai" as const,
       speakerName: "TED (AI)",
@@ -89,10 +93,24 @@ export default function SessionDetailPage({
       (b.timestamp ?? new Date(b.createdAt!).getTime()),
   );
 
-  const latestAnalytics: Analytics | undefined =
-    session.analytics?.[0];
+  const latestAnalytics: Analytics | undefined = Array.isArray(session.analytics)
+    ? session.analytics[0]
+    : session.analytics;
 
-  const summary = session.summary;
+  const rawSummary = session.summary;
+  const summary = rawSummary
+    ? {
+        score:
+          rawSummary.score ??
+          session.analytics?.technicalScore ??
+          session.analytics?.communicationScore ??
+          0,
+        strengths: rawSummary.strengths ?? rawSummary.keyPoints ?? [],
+        weaknesses: rawSummary.weaknesses ?? [],
+        recommendations:
+          rawSummary.recommendations ?? rawSummary.actionItems ?? [],
+      }
+    : null;
 
   return (
     <div className="max-w-4xl mx-auto p-8">
