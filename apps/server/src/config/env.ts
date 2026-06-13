@@ -3,80 +3,51 @@ import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
+  PORT: z.string().default("4000"),
 
-  PORT:
-    z.string()
-      .default("4000"),
+  DATABASE_URL: z.string().optional(),
 
-  DATABASE_URL:
-    z.string()
-      .optional(),
+  REDIS_URL: z.string(),
 
-  REDIS_URL:
-    z.string(),
+  JWT_SECRET: z.string(),
 
-  JWT_SECRET:
-    z.string(),
+  XAI_API_KEY: z.string().optional(),
 
-  XAI_API_KEY:
-    z.string()
-      .optional(),
+  XAI_API_BASE_URL: z.string().optional(),
 
-  XAI_API_BASE_URL:
-    z.string()
-      .optional(),
+  GEMINI_API_KEY: z.string(),
 
-  GEMINI_API_KEY:
-    z.string(),
+  API_BASE_URL: z.string().optional(),
 
-  API_BASE_URL:
-    z.string()
-      .optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
 
-  GOOGLE_CLIENT_ID:
-    z.string()
-      .optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 
-  GOOGLE_CLIENT_SECRET:
-    z.string()
-      .optional(),
+  GOOGLE_REDIRECT_URI: z
+    .string()
+    .default("http://localhost:4000/api/auth/google/callback"),
 
-  GOOGLE_REDIRECT_URI:
-    z.string()
-      .default("http://localhost:4000/api/auth/google/callback"),
+  CLIENT_REDIRECT_URL: z.string().default("http://localhost:3000"),
 
-  CLIENT_REDIRECT_URL:
-    z.string()
-      .default("http://localhost:3000"),
+  MICROSOFT_CLIENT_ID: z.string().optional(),
 
-  MICROSOFT_CLIENT_ID:
-    z.string()
-      .optional(),
+  RAZORPAY_KEY_ID: z.string(),
 
-  MICROSOFT_CLIENT_SECRET:
-    z.string()
-      .optional(),
+  RAZORPAY_KEY_SECRET: z.string(),
 
-  DEEPGRAM_API_KEY:
-    z.string(),
+  RAZORPAY_WEBHOOK_SECRET: z.string(),
 
-  AI_RESPONSE_DEBOUNCE_MS:
-    z.string()
-      .default("120"),
+  MICROSOFT_CLIENT_SECRET: z.string().optional(),
 
-  DEEPGRAM_ENDPOINTING_MS:
-    z.string()
-      .default("160"),
+  DEEPGRAM_API_KEY: z.string(),
 
-  AI_MAX_HISTORY_TURNS:
-    z.string()
-      .default("8"),
+  AI_RESPONSE_DEBOUNCE_MS: z.string().default("120"),
 
+  DEEPGRAM_ENDPOINTING_MS: z.string().default("160"),
+
+  AI_MAX_HISTORY_TURNS: z.string().default("8"),
 });
 
 console.log("DATABASE_URL =", process.env.DATABASE_URL);
 
-export const env =
-  envSchema.parse(
-    process.env,
-  );
+export const env = envSchema.parse(process.env);

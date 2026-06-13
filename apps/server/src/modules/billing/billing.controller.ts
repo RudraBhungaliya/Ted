@@ -39,6 +39,26 @@ export class BillingController {
             data : subscription,
         });
     }
+
+    async createOrder(
+        request : FastifyRequest<{
+            Body : {
+                planId : string;
+            };
+        }>,
+        reply : FastifyReply,
+    ){
+        const user = request.user as {
+            userId : string;
+        };
+
+        const order = await billingService.createOrder(user.userId, request.body.planId);
+
+        return reply.status(201).send({
+            success : true,
+            data : order,
+        });
+    }
 }
 
 export const billingController = new BillingController();
