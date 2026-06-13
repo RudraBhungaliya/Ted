@@ -6,16 +6,29 @@ datasource db {
   provider = "postgresql"
 }
 
-enum SubscriptionPlan {
-  FREE
-  PRO
-  ENTERPRISE
-}
-
 enum SessionStatus {
   ACTIVE
   COMPLETED
   FAILED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
 }
 
 model User {
@@ -38,6 +51,10 @@ model User {
   subscription Subscription?
 
   usage Usage?
+
+  orders Order[]
+
+  payments Payment[]
 }
 
 model Subscription {
@@ -45,15 +62,100 @@ model Subscription {
 
   userId String @unique
 
-  plan SubscriptionPlan @default(FREE)
+  planId String
 
-  active Boolean @default(true)
+  status SubscriptionStatus @default(ACTIVE)
 
   startedAt DateTime @default(now())
 
   expiresAt DateTime?
 
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan SubscriptionPlanConfig @relation(fields: [planId], references: [id])
+}
+
+model SubscriptionPlanConfig {
+  id String @id @default(cuid())
+
+  name String @unique
+
+  price Int
+
+  currency String @default("INR")
+
+  durationDays Int
+
+  razorpayPlanId String?
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+  orders        Order[]
+}
+
+model Order {
+  id String @id @default(cuid())
+
+  userId String
+
+  planId String
+
+  amount Int
+
+  currency String @default("INR")
+
+  status OrderStatus @default(PENDING)
+
+  razorpayOrderId String? @unique
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan SubscriptionPlanConfig @relation(fields: [planId], references: [id])
+
+  payment Payment?
+
+  @@index([userId])
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  userId String
+
+  orderId String @unique
+
+  gateway String
+
+  gatewayPaymentId String @unique
+
+  amount Int
+
+  currency String
+
+  status PaymentStatus
+
+  payload Json?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Usage {
