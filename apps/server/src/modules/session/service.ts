@@ -137,12 +137,34 @@ function mapSessionTimeline(session: SessionWithChat) {
   return mergeAdjacentTurns(orderedTurns);
 }
 
+import { billingRepository } from "../billing/billing.repository.js";
+import { SESSION_LIMITS } from "../../config/constants.js";
+import { BadRequestError } from "../../utils/error.js";
+
 export async function createSession(
   userId: string,
   mode: "INTERVIEW" | "MEETING",
 ) {
   try {
     console.log("Creating session for:", userId);
+
+    const isPremium = await billingRepository.hasActiveSubscription(userId);
+    const maxSessions = isPremium
+      ? SESSION_LIMITS.PREMIUM.MAX_SESSIONS
+      : SESSION_LIMITS.FREE.MAX_SESSIONS;
+
+    const sessionCount = await db.session.count({
+      where: {
+        userId,
+        status: "COMPLETED",
+      },
+    });
+
+    if (sessionCount >= maxSessions) {
+      throw new BadRequestError(
+        `Session limit reached. You have created ${sessionCount} of ${maxSessions} allowed sessions. Please upgrade your plan.`
+      );
+    }
 
     const session = await db.session.create({
       data: {

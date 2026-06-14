@@ -71,6 +71,7 @@ export class RealtimeClient {
             break;
           case REALTIME_EVENTS.connection.error:
             window.clearTimeout(connectionTimeout);
+            this.streaming = false;
             onError?.(inbound.payload?.message ?? "Realtime connection failed.");
             reject(
               new Error(inbound.payload?.message ?? "Realtime connection failed."),

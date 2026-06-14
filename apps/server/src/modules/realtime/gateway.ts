@@ -7,8 +7,12 @@ import {
   initializeDeepgramSession,
   sendAudioToDeepgram,
 } from "./deepgram.js";
+import { SESSION_LIMITS } from "../../config/constants.js";
+import { billingRepository } from "../billing/billing.repository.js";
+import { endSession } from "../session/service.js";
 
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
+const durationTimers = new Map<string, NodeJS.Timeout>();
 
 export async function realtimeGateway(app: FastifyInstance) {
   console.log("Realtime gateway registered");
@@ -61,6 +65,74 @@ export async function realtimeGateway(app: FastifyInstance) {
                   "Graceful reconnect within window:",
                   payload.sessionId,
                 );
+              }
+
+              // Enforce duration limits
+              const dbSession = await db.session.findUnique({
+                where: { id: payload.sessionId },
+                include: { user: true },
+              });
+
+              if (dbSession) {
+                const isPremium = await billingRepository.hasActiveSubscription(dbSession.userId);
+                const maxDuration = isPremium
+                  ? SESSION_LIMITS.PREMIUM.MAX_DURATION
+                  : SESSION_LIMITS.FREE.MAX_DURATION;
+
+                const elapsed = Date.now() - dbSession.startedAt.getTime();
+                const remaining = maxDuration - elapsed;
+
+                if (remaining <= 0) {
+                  console.log("Session duration limit already reached:", payload.sessionId);
+                  socket.send(
+                    JSON.stringify({
+                      event: REALTIME_EVENTS.connection.error,
+                      payload: {
+                        message: "Session duration limit reached. Please upgrade to Premium.",
+                      },
+                    })
+                  );
+                  socket.close();
+                  try {
+                    await endSession(payload.sessionId);
+                  } catch (dbErr) {
+                    console.error("Failed to force-end session in DB:", dbErr);
+                  }
+                  return;
+                }
+
+                // Clean up any existing duration timer
+                const existingDurationTimer = durationTimers.get(payload.sessionId);
+                if (existingDurationTimer) {
+                  clearTimeout(existingDurationTimer);
+                  durationTimers.delete(payload.sessionId);
+                }
+
+                // Set new duration limit timeout
+                const limitTimer = setTimeout(async () => {
+                  console.log("Force-ending session due to duration limit:", payload.sessionId);
+                  try {
+                    socket.send(
+                      JSON.stringify({
+                        event: REALTIME_EVENTS.connection.error,
+                        payload: {
+                          message: "Session duration limit reached. Please upgrade to Premium.",
+                        },
+                      })
+                    );
+                    socket.close();
+                  } catch (err) {
+                    console.error("Error ending websocket session after duration timeout:", err);
+                  }
+                  try {
+                    await endSession(payload.sessionId);
+                  } catch (err) {
+                    console.error("Error marking session as ended in database:", err);
+                  }
+                  durationTimers.delete(payload.sessionId);
+                }, remaining);
+
+                durationTimers.set(payload.sessionId, limitTimer);
               }
 
               try {
@@ -135,6 +207,12 @@ export async function realtimeGateway(app: FastifyInstance) {
                 disconnectTimers.delete(activeSessionId);
               }
 
+              const durationTimer = durationTimers.get(activeSessionId);
+              if (durationTimer) {
+                clearTimeout(durationTimer);
+                durationTimers.delete(activeSessionId);
+              }
+
               closeDeepgramSession(activeSessionId);
               realtimeManager.removeSession(activeSessionId);
               activeSessionId = null;
@@ -159,6 +237,13 @@ export async function realtimeGateway(app: FastifyInstance) {
 
         if (activeSessionId) {
           const sessionId = activeSessionId;
+
+          const durationTimer = durationTimers.get(sessionId);
+          if (durationTimer) {
+            clearTimeout(durationTimer);
+            durationTimers.delete(sessionId);
+          }
+
           const timer = setTimeout(() => {
             disconnectTimers.delete(sessionId);
             console.log(

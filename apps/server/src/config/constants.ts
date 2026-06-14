@@ -8,7 +8,7 @@ export const SESSION_LIMITS = {
 
     PREMIUM : {
         MAX_SESSIONS : 250,
-        MAX_DURTION : 20 * 60 * 60 * 1000,// 20 hr    
+        MAX_DURATION : 20 * 60 * 60 * 1000,// 20 hr    
     },
 }
 

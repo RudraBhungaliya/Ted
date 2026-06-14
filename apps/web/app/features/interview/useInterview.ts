@@ -103,7 +103,14 @@ async function startInterview() {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to create session.");
+      let errorMessage = "Failed to create session.";
+      try {
+        const errJson = await response.json();
+        if (errJson && errJson.message) {
+          errorMessage = errJson.message;
+        }
+      } catch (e) {}
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
