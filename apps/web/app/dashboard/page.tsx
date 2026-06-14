@@ -121,6 +121,12 @@ export default function DashboardPage() {
             >
               Dashboard
             </a>
+            <a
+              href="/billing"
+              className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors"
+            >
+              Billing
+            </a>
           </div>
         </nav>
         <div className="text-center p-8 rounded-2xl bg-neutral-900/40 border border-white/5 backdrop-blur-xl max-w-sm mt-16">
@@ -172,6 +178,12 @@ export default function DashboardPage() {
             className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
           >
             Dashboard
+          </a>
+          <a
+            href="/billing"
+            className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors"
+          >
+            Billing
           </a>
         </div>
       </nav>

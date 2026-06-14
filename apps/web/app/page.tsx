@@ -138,6 +138,12 @@ export default function Home() {
               >
                 Dashboard
               </a>
+              <a
+                href="/billing"
+                className="text-sm text-zinc-400 hover:text-white transition-colors"
+              >
+                Billing
+              </a>
               <button
                 onClick={handleLogout}
                 className="text-sm text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"

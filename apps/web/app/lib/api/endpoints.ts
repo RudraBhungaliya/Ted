@@ -9,6 +9,25 @@ export const authApi = {
   logout: () => apiClient.post("/auth/logout"),
 };
 
+export const billingApi = {
+  getPlans: () => apiClient.get<any>("/billing/plans"),
+
+  getSubscription: () => apiClient.get<any>("/billing/subscription"),
+
+  createOrder: (planId: string) =>
+    apiClient.post<any>("/billing/order", {
+      planId,
+    }),
+
+  getConfig: () => apiClient.get<any>("/billing/config"),
+
+  verifyPayment: (data: {
+    razorpayOrderId: string;
+    razorpayPaymentId: string;
+    razorpaySignature: string;
+  }) => apiClient.post<any>("/billing/verify", data),
+};
+
 // Audio endpoints
 export const audioApi = {
   upload: (file: File) => {

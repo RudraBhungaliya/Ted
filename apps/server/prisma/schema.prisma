@@ -284,3 +284,5 @@ model SessionSummary {
 
   session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 }
+
+

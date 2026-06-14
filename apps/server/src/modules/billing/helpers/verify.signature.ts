@@ -9,3 +9,17 @@ export function verifyWebhookSignature(body: string, signature: string) {
 
   return expectedSignature === signature;
 }
+
+export function verifyPaymentSignature(
+  orderId: string,
+  paymentId: string,
+  signature: string,
+) {
+  const text = orderId + "|" + paymentId;
+  const expectedSignature = crypto
+    .createHmac("sha256", env.RAZORPAY_KEY_SECRET)
+    .update(text)
+    .digest("hex");
+
+  return expectedSignature === signature;
+}

@@ -41,7 +41,7 @@ export class BillingRepository {
   }
 
   async findOrderByRazorpayOrderId(razorpayOrderId: string) {
-    return db.order.findFirst({
+    return db.order.findUnique({
       where: {
         razorpayOrderId,
       },
@@ -50,6 +50,37 @@ export class BillingRepository {
       },
     });
   }
+
+  async hasActiveSubscription(
+  userId: string,
+) {
+  const subscription =
+    await db.subscription.findUnique({
+      where: {
+        userId,
+      },
+      include: {
+        plan: true,
+      },
+    });
+
+  if (!subscription) {
+    return false;
+  }
+
+  if (subscription.status !== "ACTIVE") {
+    return false;
+  }
+
+  if (
+    subscription.expiresAt &&
+    subscription.expiresAt < new Date()
+  ) {
+    return false;
+  }
+
+  return true;
+}
 
   async getUserSubscription(userId: string) {
     return db.subscription.findUnique({
@@ -93,6 +124,18 @@ export class BillingRepository {
     planId: string,
     expiresAt: Date,
   ) {
+    const existing = await db.subscription.findUnique({
+      where: {
+        userId,
+      },
+    });
+
+    if (existing && existing.expiresAt && existing.expiresAt > new Date()) {
+      const remainingTime = existing.expiresAt.getTime() - Date.now();
+
+      expiresAt = new Date(expiresAt.getTime() + remainingTime);
+    }
+
     return db.subscription.upsert({
       where: {
         userId,
@@ -107,6 +150,14 @@ export class BillingRepository {
         planId,
         status: "ACTIVE",
         expiresAt,
+      },
+    });
+  }
+
+  async findPaymentByGatewayPaymentId(gatewayPaymentId: string) {
+    return db.payment.findUnique({
+      where: {
+        gatewayPaymentId,
       },
     });
   }

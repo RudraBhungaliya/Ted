@@ -8,6 +8,8 @@ import { analyticsRoutes } from "../modules/analytics/analytics.route.js";
 
 import { screenRoutes } from "../modules/screen/screen.route.js";
 
+import { billingRoutes } from "../modules/billing/billing.routes.js";
+
 import { realtimeGateway } from "../modules/realtime/gateway.js";
 
 export async function registerRoutes(app: FastifyInstance) {
@@ -39,6 +41,10 @@ export async function registerRoutes(app: FastifyInstance) {
 
   await app.register(screenRoutes, {
     prefix: "/api/screen",
+  });
+
+  await app.register(billingRoutes, {
+    prefix: "/api/billing",
   });
 
   await realtimeGateway(app);

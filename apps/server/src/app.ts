@@ -15,11 +15,15 @@ import { registerRoutes } from "./api/index.js";
 import "./types/fastify.js";
 
 import { startRealtimeWorker } from "./modules/realtime/worker.js";
+import { errorHandler } from "./middleware/error.js";
+import { db } from "./db/client.js";
 
 const app = Fastify({
   logger: false,
   ignoreTrailingSlash: true,
 });
+
+app.setErrorHandler(errorHandler);
 
 await app.register(websocket);
 
@@ -34,11 +38,38 @@ await app.register(cookie, {
 
 await registerRoutes(app);
 
+async function checkExpiredSubscriptions() {
+  try {
+    const now = new Date();
+    const expiredSubCount = await db.subscription.updateMany({
+      where: {
+        status: "ACTIVE",
+        expiresAt: {
+          lt: now,
+        },
+      },
+      data: {
+        status: "EXPIRED",
+      },
+    });
+    if (expiredSubCount.count > 0) {
+      logger.info(`Expired ${expiredSubCount.count} subscriptions.`);
+    }
+  } catch (err) {
+    logger.error(err, "Error checking expired subscriptions");
+  }
+}
+
 const start = async () => {
   try {
     await startRealtimeWorker();
 
     logger.info("Realtime worker started");
+
+    await checkExpiredSubscriptions();
+    setInterval(() => {
+      void checkExpiredSubscriptions();
+    }, 10 * 60 * 1000);
 
     await app.listen({
       port: Number(env.PORT),
