@@ -1,0 +1,135 @@
+[33mac8bad3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mrudra[m[33m)[m add capture protection and subscription-based desktop controls
+[33m2edd083[m[33m ([m[1;31morigin/rudra[m[33m)[m complete subscription lifecycle and quota enforcement
+[33m3a5c390[m add webhook verification and subscription activation flow
+[33mce225aa[m feat(billing): add subscription plans and Razorpay order creation flow
+[33md40257b[m Billing controllers
+[33m8c93e08[m Razorpay config
+[33m53bedbc[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Auth
+[33m0a970b4[m Merge pull request #10 from RudraBhungaliya/rudra
+[33m2b8c1e3[m Fix session replay, persistence, and transcript chunk accumulation
+[33m831a113[m Merge branch 'rudra'
+[33m0f92b1c[m Desktop chk
+[33m50ef6c2[m Desktop app panel
+[33maa24d0a[m Post session Analytics
+[33m837dc79[m UI and chat storing enhanced
+[33m242fc81[m checkpoint
+[33m3cec902[m Session Checkpoint
+[33mb1f42aa[m Session mode enhanced
+[33mf11e521[m fix session persistence, audio capture flow, and startup behavior
+[33md427a50[m Add session modes, transcript persistence and summaries
+[33m3580cb5[m Sessions Reconfigured
+[33m62b8e2c[m Transcript re-configured
+[33m2e33607[m added Electron wrapper and session persistence with PG
+[33mf5c1e4d[m added Electron wrapper and session persistence with PG
+[33mee2ca43[m Merge pull request #9 from RudraBhungaliya/rudra
+[33med42ab4[m git add .
+[33mbd3e6a3[m Merge pull request #8 from RudraBhungaliya/rudra
+[33mbc1c991[m PG layer and several other features and debugs
+[33m6d0039d[m PostgreSQL schema setup
+[33m1ee51f0[m Added Interview question detector and Duplicate question cooldown
+[33m2f78b86[m Added  interview session history and replay system
+[33m6079f07[m client side polishing
+[33m377ce9c[m Only interviewer audio transmission in pipeline
+[33mb7e1aff[m Merge pull request #7 from RudraBhungaliya/rudra
+[33m871b2ce[m Audio Transmission and Responding Workdone
+[33me38728a[m Chk
+[33m57217b4[m Listening checkpoint
+[33m31ed934[m Refactor realtime audio processing and enhance WebSocket connection handling
+[33m0f01c16[m Flag
+[33meaea297[m Merge pull request #6 from RudraBhungaliya/rudra
+[33m8eb7261[m implemented realtime conversational AI pipeline
+[33ma6ea785[m fix realtime websocket connectivity and restore end-to-end transcription pipeline
+[33m50fd75e[m fix : zustand state architecture
+[33m7abda97[m Client and Hook
+[33m3e5314d[m Audio Classes
+[33m1bd156a[m Audio Classes
+[33mb041000[m Frontend protocol events and transport types
+[33m7182c6a[m Frontend protocol events and transport types
+[33m6ad4abd[m Deepgram Integration and Streaming Layer
+[33m9d12c21[m Deepgram Websocket Connection
+[33mfe1beef[m Redis Pub/Sub event handling worker
+[33m087a6e8[m chk
+[33m0814329[m Ai streaming runtime layer
+[33m4447f9d[m Transcript broadcasting layer
+[33m87438e7[m Transaction Gateway and Audio Chunking
+[33m9356175[m event contract registry and payload schema layer
+[33m55a81d2[m Auth Workdone
+[33m0aa0a1c[m Auth services, cookies and redis
+[33m5792523[m Auth checkpoint 1
+[33m5ab78ab[m Auth, constants and hashing
+[33mdddba4b[m Middleware service
+[33m4fd0c24[m Register Routes
+[33m1d2b573[m Server init
+[33m40612cc[m Merge branch 'rudra'
+[33m7f2f813[m Redis Locking
+[33ma51e355[m Cache transcript results
+[33mc8b8d2a[m centralized cache access layer
+[33m341ab58[m Merge pull request #4 from RudraBhungaliya/rudra
+[33m84bb903[m Redis transport layer
+[33m350b043[m debug
+[33mf30fc4e[m messages and audio chunk support services
+[33m9470bf3[m Audio preprocessing layer
+[33m8bb2463[m WS transport entrypoint
+[33m091f192[m HTTP SSE -> WebSocket
+[33m2a99e09[m debugging imports and typos
+[33mb676031[m Centralized STT layer
+[33m7e0da39[m Deepgram provider
+[33m9719917[m Base Audio Provider with abstract class
+[33m418b8d4[m Grok config
+[33m2e1ff32[m Grok Provider
+[33ma86396b[m Provider Interface
+[33mf567452[m Centralized logging setup
+[33m5e8171d[m Centralized environment configuration management
+[33m444d781[m logging
+[33m22b470e[m config
+[33m5c7559e[m Schemas
+[33m2b65ecb[m Token streaming endpoint
+[33md9de6a2[m Audio websocket -> Mock STT
+[33m4590056[m checkpoint
+[33m04eaf34[m Merge pull request #3 from RudraBhungaliya/rudra
+[33m79d63e3[m Streaming setup backend architecture
+[33m604d0d7[m checkpoint
+[33meaea0a9[m pivot
+[33me90205b[m Resolve merge conflicts: integrate refactored code with error handling and modular architecture
+[33m7bf5669[m debug
+[33me72f38d[m DB config and middleware
+[33m1c592e0[m Fixed AudioServices
+[33m6d41e3c[m Stream
+[33md1e9216[m Audio
+[33mbe1be96[m added middleware, multer, eventBus
+[33m03bd830[m checkpoint
+[33m0462fbc[m check
+[33ma2a3b92[m DB config and middleware
+[33m58e1cb4[m Fixed AudioServices
+[33m0013297[m Stream
+[33mddbcd84[m Audio
+[33m1ff0f8e[m added middleware, multer, eventBus
+[33m4311e1c[m checkpoint
+[33m7f501e9[m check
+[33mc12ea73[m Merge pull request #2 from RudraBhungaliya/rudra
+[33ma8298a1[m server
+[33m78b0dec[m Merge pull request #1 from RudraBhungaliya/rudra
+[33m42500a7[m added realtime pipeline and libs
+[33m3d1474e[m built propagation APIs
+[33m2e9deb2[m Reduced latency and and improved audio uploading
+[33m0c14b76[m checkpoint
+[33m01aa94b[m checkpoint
+[33m3eafaf9[m Base Layout done
+[33mb784bc9[m check
+[33ma2f5008[m agentic checkpoint
+[33m1ad7c27[m debugging transcript
+[33m585df29[m Components added
+[33m6176eba[m added default exporter index.ts
+[33mc652a24[m Added Overlay
+[33meb8647c[m #debug
+[33m1882256[m Added the floating panel
+[33m86de00b[m correct audio upload and stream lifecycle bugs
+[33m678bbc5[m added useStream
+[33m8d00b20[m updated useMic accn to recorder
+[33mbdaac72[m hook for connection betn api and mic
+[33meca184c[m checkpoint
+[33mf193354[m Merge branch 'main' of https://github.com/RudraBhungaliya/Reflex
+[33mef07130[m Event Source continuous Connection for server to client dataflow
+[33m6e139fe[m Added Features of useMic and store chunks
+[33mc8ac3d3[m Added project overview
+[33mfd4312d[m init commit
