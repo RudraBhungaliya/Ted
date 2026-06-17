@@ -123,14 +123,16 @@ export function initializeDeepgramSession(sessionId: string) {
       //   • Record as PARTICIPANT
       //   • ALWAYS trigger AI on final — this is the question you need answered
       // ─────────────────────────────────────────────────────────────────────
+      const speakerName = isMeetingMode ? "Meeting Participant" : "Speaker";
+
       if (isFinal) {
-        await saveTranscript(sessionId, "Interviewer", "PARTICIPANT", text);
+        await saveTranscript(sessionId, speakerName, "PARTICIPANT", text);
         appendInterviewerSegment(sessionId, text);
 
         emitTranscriptEvent(sessionId, {
           sessionId,
           text,
-          speakerName: "Interviewer",
+          speakerName,
           speakerType: "PARTICIPANT",
           isFinal: true,
           triggerAi: true, // ← ALWAYS trigger AI from system audio
@@ -143,14 +145,14 @@ export function initializeDeepgramSession(sessionId: string) {
         emitTranscriptEvent(sessionId, {
           sessionId,
           text,
-          speakerName: "Interviewer",
+          speakerName,
           speakerType: "PARTICIPANT",
           isFinal: false,
           triggerAi: false,
         });
       } else {
         // Interview mode: show partial transcript while interviewer is speaking
-        emitPartialTranscript(sessionId, text, "Interviewer");
+        emitPartialTranscript(sessionId, text, speakerName);
       }
     }
   });

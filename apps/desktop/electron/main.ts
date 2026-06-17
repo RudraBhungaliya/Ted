@@ -100,6 +100,12 @@ app.whenReady().then(() => {
     overlayWindow?.setAlwaysOnTop(enabled, "screen-saver");
   });
 
+  ipcMain.handle("desktop:setContentProtection", (_event, enabled: boolean) => {
+    if (overlayWindow && !overlayWindow.isDestroyed()) {
+      overlayWindow.setContentProtection(enabled);
+    }
+  });
+
   ipcMain.handle("desktop:showOverlay", () => {
     if (mainWindow) {
       mainWindow.minimize();

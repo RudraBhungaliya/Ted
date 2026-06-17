@@ -124,7 +124,7 @@ export default function Home() {
                 href="/"
                 className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
               >
-                Interview
+                Assistant
               </a>
               <a
                 href="/history"
@@ -369,9 +369,9 @@ export default function Home() {
                 }}
                 className="w-full p-4 rounded-xl border border-indigo-500 hover:bg-indigo-500/10 text-left cursor-pointer"
               >
-                <div className="font-semibold text-white">Interview Mode</div>
+                <div className="font-semibold text-white">Assistant Mode</div>
                 <div className="text-sm text-zinc-400 mt-1">
-                  Listen only to interviewer questions and generate answers.
+                  AI-powered real-time assistance and suggestions.
                 </div>
               </button>
 

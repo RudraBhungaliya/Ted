@@ -32,7 +32,7 @@ function handleTranscript(
     (meta?.speakerType === "USER"
       ? "You"
       : meta?.speakerType === "PARTICIPANT"
-        ? "Interviewer"
+        ? (mode === "meeting" ? "Meeting Participant" : "Speaker")
         : "Unknown");
 
   if (!isFinal) {

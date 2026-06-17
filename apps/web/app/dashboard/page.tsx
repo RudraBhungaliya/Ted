@@ -107,7 +107,7 @@ export default function DashboardPage() {
               href="/"
               className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors"
             >
-              Interview
+              Assistant
             </a>
             <a
               href="/history"
@@ -165,7 +165,7 @@ export default function DashboardPage() {
             href="/"
             className="text-sm font-semibold text-zinc-400 hover:text-white transition-colors"
           >
-            Interview
+            Assistant
           </a>
           <a
             href="/history"

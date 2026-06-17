@@ -16,6 +16,7 @@ import {
   startScreenAnalysisLoop,
   type ScreenCaptureLoop,
 } from "../lib/screen/capture";
+import { billingApi } from "../lib/api/endpoints";
 
 type Props = {
   children?: ReactNode;
@@ -62,6 +63,35 @@ export default function FloatingPanel({
   >([]);
   const [currentQuestion, setCurrentQuestion] = useState("");
 
+  const [isSubscribed, setIsSubscribed] = useState(false);
+
+  useEffect(() => {
+    async function checkSubscription() {
+      try {
+        const res = await billingApi.getSubscription();
+        if (res && res.data && res.data.status === "ACTIVE") {
+          const expiresAt = res.data.expiresAt;
+          const remaining = new Date(expiresAt).getTime() - Date.now();
+          if (remaining > 0) {
+            setIsSubscribed(true);
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load subscription status:", err);
+      }
+      setIsSubscribed(false);
+    }
+    void checkSubscription();
+  }, []);
+
+  useEffect(() => {
+    const desktopControls = (window as any).desktopControls;
+    if (desktopControls?.setContentProtection) {
+      desktopControls.setContentProtection(isSubscribed);
+    }
+  }, [isSubscribed]);
+
   // Process history to sync conversationHistory and currentQuestion
   useEffect(() => {
     const pairs: Array<{ question: string; answer: string }> = [];
@@ -104,7 +134,7 @@ export default function FloatingPanel({
   // Answer display helper
   const displayAnswer = isAiResponding
     ? aiResponse
-    : (conversationHistory[0]?.answer || "Waiting for question...");
+    : (conversationHistory[0]?.answer || (sessionMode === "meeting" ? "Waiting for discussion..." : "Waiting for question..."));
 
   // Keep scroll position pinned to the top of the answer container while streaming or on question change
   useEffect(() => {
@@ -634,9 +664,9 @@ export default function FloatingPanel({
                 <Briefcase className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-semibold">Interview Mode</div>
+                <div className="text-xs font-semibold">Assistant Mode</div>
                 <div className="text-[10px] text-zinc-500 mt-0.5">
-                  Real-time suggested responses
+                  Real-time AI assistance & suggestions
                 </div>
               </div>
             </button>
@@ -800,7 +830,7 @@ export default function FloatingPanel({
                   ) : isStealth ? (
                     "Ted Stealth"
                   ) : (
-                    "Interview Session"
+                    sessionMode === "meeting" ? "Meeting Session" : "Assistant Session"
                   )}
                 </span>
                 {!isStealth && (
@@ -869,11 +899,11 @@ export default function FloatingPanel({
             <div className={`flex-none rounded-xl border border-zinc-800 bg-zinc-900/40 ${isStealth ? "p-2" : "p-4"}`}>
               {!isStealth && (
                 <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5 font-bold select-none">
-                  Question
+                  {sessionMode === "meeting" ? "Meeting Voice" : "Voice Input"}
                 </div>
               )}
               <div className={`text-zinc-200 whitespace-pre-wrap font-medium ${isStealth ? "text-[11px] leading-snug" : "text-sm leading-relaxed"}`}>
-                {currentQuestion || "Waiting for interviewer..."}
+                {currentQuestion || (sessionMode === "meeting" ? "Waiting for meeting voice..." : "Waiting for voice input...")}
               </div>
             </div>
 
@@ -881,7 +911,7 @@ export default function FloatingPanel({
             <div className={`flex-1 flex flex-col rounded-xl border border-indigo-500/15 bg-neutral-900/30 min-h-0 ${isStealth ? "p-2" : "p-4"}`}>
               {!isStealth && (
                 <div className="flex-none text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5 font-bold select-none">
-                  Answer
+                  {sessionMode === "meeting" ? "Real-time Assist" : "Suggested Response"}
                 </div>
               )}
               <div

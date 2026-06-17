@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld("desktopControls", {
   stopSession(sessionId?: string) {
     return ipcRenderer.invoke("desktop:stopSession", sessionId);
   },
+  setContentProtection(enabled: boolean) {
+    return ipcRenderer.invoke("desktop:setContentProtection", enabled);
+  },
   onSessionEnded(callback: () => void) {
     const listener = () => callback();
     ipcRenderer.on("desktop:session-ended", listener);
