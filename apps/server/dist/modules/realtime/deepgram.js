@@ -1,50 +1,172 @@
 import { createClient, LiveTranscriptionEvents } from "@deepgram/sdk";
 import { env } from "../../config/env.js";
-import { emitPartialTranscript, emitFinalTranscript, } from "./transcript.js";
-const deepgram = createClient(env.DEEPGRAM_API_KEY);
+import { appendInterviewerSegment, emitPartialTranscript, emitSpeechFinal, emitTranscriptEvent, trackUserSpeech, } from "./transcript.js";
+import { realtimeManager } from "./manager.js";
+import { saveTranscript } from "../transcript/service.js";
+const deepgram = createClient(env.DEEPGRAM_API_KEY || "mock_deepgram_api_key");
 const connections = new Map();
+function getChannelIndex(data) {
+    const index = data.channel_index;
+    if (Array.isArray(index))
+        return index[0] ?? 0;
+    return index ?? 0;
+}
 export function initializeDeepgramSession(sessionId) {
     if (connections.has(sessionId))
         return;
-    const connection = deepgram.transcription.live({
+    const connection = deepgram.listen.live({
         model: "nova-2",
         language: "en-US",
         smart_format: true,
         interim_results: true,
         punctuate: true,
-        endpointing: 100,
+        endpointing: Number(env.DEEPGRAM_ENDPOINTING_MS),
+        encoding: "linear16",
+        sample_rate: 16000,
+        channels: 2,
+        multichannel: true,
     });
-    connection.on(LiveTranscriptionEvents.TranscriptReceived, () => {
-        console.log("Deepgram connected");
+    const sessionState = {
+        connection,
+        isOpen: false,
+        queue: [],
+    };
+    connection.on(LiveTranscriptionEvents.Open, () => {
+        console.log("[Deepgram] Connected for session:", sessionId);
+        sessionState.isOpen = true;
+        while (sessionState.queue.length > 0) {
+            const chunk = sessionState.queue.shift();
+            if (chunk)
+                connection.send(chunk);
+        }
     });
-    connection.on(LiveTranscriptionEvents.TranscriptPartiallyReceived, (data) => {
-        const text = data.channel
-            ?.alternatives?.[0]
-            ?.transcript;
-        if (!text)
-            return;
+    connection.on(LiveTranscriptionEvents.Transcript, async (data) => {
+        console.log("[DG RAW]", JSON.stringify({
+            channel_index: data.channel_index,
+            speech_final: data.speech_final,
+            is_final: data.is_final,
+            transcript: data.channel?.alternatives?.[0]?.transcript,
+        }));
+        const channelAlternatives = data.channel?.alternatives?.[0];
+        const text = channelAlternatives?.transcript?.trim();
         const isFinal = data.is_final;
-        if (isFinal) {
-            emitFinalTranscript(sessionId, text);
+        const channelIndex = getChannelIndex(data);
+        const currentSession = realtimeManager.getSession(sessionId);
+        const isMeetingMode = currentSession?.mode === "meeting";
+        if (!text) {
+            if (data.speech_final && channelIndex === 1) {
+                void emitSpeechFinal(sessionId);
+            }
             return;
         }
-        emitPartialTranscript(sessionId, text);
+        if (channelIndex === 0) {
+            // ─────────────────────────────────────────────────────────────────────
+            // CHANNEL 0 = YOUR MIC
+            //   • Record what you said (always save to transcript as USER)
+            //   • NEVER trigger AI — you are reading AI's reply, not asking questions
+            // ─────────────────────────────────────────────────────────────────────
+            if (isFinal) {
+                await saveTranscript(sessionId, "You", "USER", text);
+                void trackUserSpeech(sessionId, text);
+                emitTranscriptEvent(sessionId, {
+                    sessionId,
+                    text,
+                    speakerName: "You",
+                    speakerType: "USER",
+                    isFinal: true,
+                    triggerAi: false, // ← NEVER trigger AI from your own mic
+                });
+            }
+            else if (isMeetingMode) {
+                // Show partial captions for your speech in meeting mode only
+                emitTranscriptEvent(sessionId, {
+                    sessionId,
+                    text,
+                    speakerName: "You",
+                    speakerType: "USER",
+                    isFinal: false,
+                    triggerAi: false,
+                });
+            }
+            return;
+        }
+        if (channelIndex === 1) {
+            // ─────────────────────────────────────────────────────────────────────
+            // CHANNEL 1 = SYSTEM / SCREEN AUDIO (interviewer / meeting participant)
+            //   • Record as PARTICIPANT
+            //   • ALWAYS trigger AI on final — this is the question you need answered
+            // ─────────────────────────────────────────────────────────────────────
+            const speakerName = isMeetingMode ? "Meeting Participant" : "Speaker";
+            if (isFinal) {
+                await saveTranscript(sessionId, speakerName, "PARTICIPANT", text);
+                appendInterviewerSegment(sessionId, text);
+                emitTranscriptEvent(sessionId, {
+                    sessionId,
+                    text,
+                    speakerName,
+                    speakerType: "PARTICIPANT",
+                    isFinal: true,
+                    triggerAi: true, // ← ALWAYS trigger AI from system audio
+                });
+                // Debounce the AI trigger so fragmented final chunks become one question.
+                void emitSpeechFinal(sessionId);
+            }
+            else if (isMeetingMode) {
+                // Partial captions for interviewer in meeting mode
+                emitTranscriptEvent(sessionId, {
+                    sessionId,
+                    text,
+                    speakerName,
+                    speakerType: "PARTICIPANT",
+                    isFinal: false,
+                    triggerAi: false,
+                });
+            }
+            else {
+                // Interview mode: show partial transcript while interviewer is speaking
+                emitPartialTranscript(sessionId, text, speakerName);
+            }
+        }
     });
-    connection.on(LiveTranscriptionEvents.TranscriptError, (error) => {
-        console.error("Deepgram Error", error);
+    connection.on(LiveTranscriptionEvents.Error, (error) => {
+        console.error("[Deepgram] Error:", error);
     });
-    connections.set(sessionId, connection);
+    connection.on(LiveTranscriptionEvents.Close, () => {
+        console.log("[Deepgram] Closed for session:", sessionId);
+        sessionState.isOpen = false;
+        const session = realtimeManager.getSession(sessionId);
+        if (session) {
+            console.log("[Deepgram] Reconnecting for session:", sessionId);
+            connections.delete(sessionId);
+            setTimeout(() => {
+                if (realtimeManager.getSession(sessionId)) {
+                    initializeDeepgramSession(sessionId);
+                }
+            }, 1000);
+        }
+    });
+    connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
+        void emitSpeechFinal(sessionId);
+    });
+    connections.set(sessionId, sessionState);
 }
-export const sendAudioToDeepgram = (sessionId, audio) => {
-    const connection = connections.get(sessionId);
-    if (!connection)
+export function sendAudioToDeepgram(sessionId, audio) {
+    console.log("[DEEPGRAM AUDIO]", sessionId, audio.length);
+    const sessionState = connections.get(sessionId);
+    if (!sessionState) {
+        console.log("[DEEPGRAM AUDIO] NO SESSION");
         return;
-    connection.send(audio);
-};
+    }
+    if (sessionState.isOpen) {
+        sessionState.connection.send(audio);
+        return;
+    }
+    sessionState.queue.push(audio);
+}
 export function closeDeepgramSession(sessionId) {
-    const connection = connections.get(sessionId);
-    if (!connection)
+    const sessionState = connections.get(sessionId);
+    if (!sessionState)
         return;
-    connection.finish();
+    sessionState.connection.finish();
     connections.delete(sessionId);
 }

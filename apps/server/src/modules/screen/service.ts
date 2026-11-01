@@ -3,7 +3,7 @@ import { GoogleGenAI } from "@google/genai";
 import { env } from "../../config/env.js";
 import { realtimeManager } from "../realtime/manager.js";
 
-const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY || "dummy_gemini_key" });
 
 type ScreenAnalysisInput = {
   sessionId: string;

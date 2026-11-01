@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { env } from "../../config/env.js";
 import { db } from "../../db/client.js";
 
-const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+const ai = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY || "dummy_gemini_key" });
 
 export async function generateSessionSummary(sessionId: string) {
   let totalWords = 0;

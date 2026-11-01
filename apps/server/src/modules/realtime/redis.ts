@@ -11,6 +11,9 @@ const subscriber = new (Redis as any)(
     env.REDIS_URL,
 );
 
+publisher.on("error", () => {});
+subscriber.on("error", () => {});
+
 export const REDIS_CHANNELS = {
     audio : 
         "ted:audio",

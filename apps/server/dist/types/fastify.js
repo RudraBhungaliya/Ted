@@ -1,1 +1,1 @@
-export {};
+import "@fastify/cookie";

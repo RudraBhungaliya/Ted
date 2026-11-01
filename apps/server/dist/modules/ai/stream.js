@@ -1,0 +1,46 @@
+import { buildMessages } from "./prompt.js";
+import { saveTranscript } from "../transcript/service.js";
+import { streamAiProvider } from "./providers/index.js";
+import { db } from "../../db/client.js";
+import { realtimeManager } from "../realtime/manager.js";
+import { startAiStream, streamAiToken, endAiStream, failAiStream, } from "../realtime/stream.js";
+export async function streamAiResponse(sessionId, turns) {
+    try {
+        const sessionState = realtimeManager.getSession(sessionId);
+        const mode = sessionState?.mode ?? "interview";
+        const screenContext = sessionState?.screenContext ?? "";
+        startAiStream(sessionId);
+        let fullResponse = "";
+        let receivedTokens = false;
+        const streamPromise = streamAiProvider(buildMessages(turns, mode, screenContext), (token) => {
+            receivedTokens = true;
+            fullResponse += token;
+            streamAiToken(sessionId, token);
+        });
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                if (!receivedTokens) {
+                    reject(new Error("AI response timed out. Please try again."));
+                }
+            }, 12000);
+        });
+        await Promise.race([streamPromise, timeoutPromise]);
+        await db.aiMessage.create({
+            data: {
+                sessionId,
+                provider: "gemini",
+                model: "gemini-2.5-flash",
+                text: fullResponse,
+            },
+        });
+        await saveTranscript(sessionId, "TED", "AI", fullResponse);
+        endAiStream(sessionId);
+    }
+    catch (error) {
+        console.error("Error in streamAiResponse:", error);
+        const message = error instanceof Error && error.message
+            ? error.message
+            : "AI response failed.";
+        failAiStream(sessionId, message);
+    }
+}

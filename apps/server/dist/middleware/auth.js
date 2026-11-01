@@ -1,21 +1,32 @@
+import { db } from "../db/client.js";
 import { verifyToken } from "../lib/jwt.js";
-import { ACCESS_COOKIE, } from "../lib/cookies.js";
+import { ACCESS_COOKIE } from "../lib/cookies.js";
+import { UnauthorizedError } from "../utils/error.js";
 export async function authMiddleware(request, reply) {
+    const accessToken = request.cookies[ACCESS_COOKIE];
+    if (!accessToken) {
+        throw new UnauthorizedError("Unauthorized: Missing access token");
+    }
     try {
-        const token = request.cookies[ACCESS_COOKIE];
-        if (!token) {
-            return reply.status(401).send({
-                success: false,
-                message: "Auth Header missing",
-            });
+        const payload = verifyToken(accessToken);
+        const user = await db.user.findUnique({
+            where: { id: payload.userId },
+            select: {
+                id: true,
+                email: true,
+                fullName: true,
+            },
+        });
+        if (!user) {
+            throw new UnauthorizedError("Unauthorized: User not found");
         }
-        const payload = verifyToken(token);
-        request.user = payload;
+        request.user = {
+            userId: user.id,
+            email: user.email,
+            fullName: user.fullName || undefined,
+        };
     }
     catch (err) {
-        return reply.status(401).send({
-            success: false,
-            message: "Invalid token",
-        });
+        throw new UnauthorizedError("Unauthorized: Invalid access token");
     }
 }

@@ -1,5 +1,13 @@
 import { logger } from "../config/logger.js";
-export async function errorHandler(error, reply) {
+import { AppError } from "../utils/error.js";
+export async function errorHandler(error, request, reply) {
+    if (error instanceof AppError || (error && typeof error.statusCode === "number")) {
+        const statusCode = error.statusCode || 400;
+        return reply.status(statusCode).send({
+            success: false,
+            message: error.message,
+        });
+    }
     logger.error(error);
     return reply.status(500).send({
         success: false,

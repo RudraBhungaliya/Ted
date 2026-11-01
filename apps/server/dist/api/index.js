@@ -1,4 +1,9 @@
 import { authRoutes } from "../modules/auth/auth.route.js";
+import { sessionRoutes } from "../modules/session/session.route.js";
+import { analyticsRoutes } from "../modules/analytics/analytics.route.js";
+import { screenRoutes } from "../modules/screen/screen.route.js";
+import { billingRoutes } from "../modules/billing/billing.routes.js";
+import { realtimeGateway } from "../modules/realtime/gateway.js";
 export async function registerRoutes(app) {
     app.get("/health", async () => {
         return {
@@ -8,4 +13,17 @@ export async function registerRoutes(app) {
     await app.register(authRoutes, {
         prefix: "/api/auth",
     });
+    await app.register(sessionRoutes, {
+        prefix: "/api/session",
+    });
+    await app.register(analyticsRoutes, {
+        prefix: "/api/analytics",
+    });
+    await app.register(screenRoutes, {
+        prefix: "/api/screen",
+    });
+    await app.register(billingRoutes, {
+        prefix: "/api/billing",
+    });
+    await realtimeGateway(app);
 }

@@ -20,7 +20,9 @@ import { db } from "./db/client.js";
 
 const app = Fastify({
   logger: false,
-  ignoreTrailingSlash: true,
+  routerOptions: {
+    ignoreTrailingSlash: true,
+  },
 });
 
 app.setErrorHandler(errorHandler);

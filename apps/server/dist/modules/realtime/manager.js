@@ -1,13 +1,171 @@
+import { db } from "../../db/client.js";
+const SAME_ROLE_MERGE_WINDOW_MS = 30_000;
+function normalizeWords(text) {
+    return text
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, " ")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+}
+function combineTranscriptText(previous, next) {
+    const left = previous.trim();
+    const right = next.trim();
+    if (!left)
+        return right;
+    if (!right)
+        return left;
+    if (right.startsWith(left))
+        return right;
+    if (left.startsWith(right))
+        return left;
+    const leftWords = normalizeWords(left);
+    const rightWords = normalizeWords(right);
+    const normalizedLeft = leftWords.join(" ");
+    const normalizedRight = rightWords.join(" ");
+    if (normalizedRight.startsWith(normalizedLeft))
+        return right;
+    if (normalizedLeft.startsWith(normalizedRight))
+        return left;
+    const maxOverlap = Math.min(leftWords.length, rightWords.length);
+    for (let size = maxOverlap; size > 0; size -= 1) {
+        if (leftWords.slice(-size).join(" ") ===
+            rightWords.slice(0, size).join(" ")) {
+            return `${left} ${rightWords.slice(size).join(" ")}`.trim();
+        }
+    }
+    return `${left} ${right}`.trim();
+}
+function addConversationTurn(turns, turn) {
+    const previous = turns[turns.length - 1];
+    if (previous &&
+        previous.role === turn.role &&
+        turn.timestamp - previous.timestamp <= SAME_ROLE_MERGE_WINDOW_MS) {
+        previous.text = combineTranscriptText(previous.text, turn.text);
+        previous.timestamp = turn.timestamp;
+        return;
+    }
+    turns.push(turn);
+}
+function mergeConversationTurns(turns) {
+    return turns.reduce((merged, turn) => {
+        addConversationTurn(merged, { ...turn });
+        return merged;
+    }, []);
+}
 class RealtimeManager {
     sessions = new Map();
     sockets = new Map();
-    createSession(sessionId) {
+    createSession(sessionId, mode = "interview") {
         this.sessions.set(sessionId, {
             sessionId,
-            transcript: [],
-            aiResponse: [],
+            turns: [],
+            currentAiTokens: [],
+            pendingUserText: "",
+            aiStreaming: false,
             connected: true,
+            mode,
+            screenContext: "",
         });
+    }
+    async restoreSession(sessionId, defaultMode = "interview") {
+        if (this.sessions.has(sessionId)) {
+            return true;
+        }
+        const session = await db.session.findUnique({
+            where: { id: sessionId },
+            include: {
+                transcripts: {
+                    orderBy: {
+                        createdAt: "asc",
+                    },
+                },
+                aiMessages: {
+                    orderBy: {
+                        createdAt: "asc",
+                    },
+                },
+            },
+        });
+        if (!session)
+            return false;
+        const interviewerTurns = session.transcripts
+            .filter((t) => t.speakerType === "PARTICIPANT")
+            .map((t) => ({
+            role: "user",
+            text: t.text,
+            timestamp: t.createdAt.getTime(),
+        }));
+        const aiTurns = session.aiMessages.map((m) => ({
+            role: "assistant",
+            text: m.text,
+            timestamp: m.createdAt.getTime(),
+        }));
+        const legacyAiTranscriptTurns = session.transcripts
+            .filter((t) => t.speakerType === "AI")
+            .filter((t) => {
+            return !session.aiMessages.some((m) => {
+                return (m.text.trim() === t.text.trim() &&
+                    Math.abs(m.createdAt.getTime() - t.createdAt.getTime()) < 5000);
+            });
+        })
+            .map((t) => ({
+            role: "assistant",
+            text: t.text,
+            timestamp: t.createdAt.getTime(),
+        }));
+        const turns = mergeConversationTurns([...interviewerTurns, ...aiTurns, ...legacyAiTranscriptTurns].sort((a, b) => a.timestamp - b.timestamp));
+        const mode = session.mode === "MEETING" ? "meeting" : "interview";
+        this.sessions.set(sessionId, {
+            sessionId,
+            turns,
+            currentAiTokens: [],
+            pendingUserText: "",
+            aiStreaming: false,
+            connected: true,
+            mode,
+            screenContext: "",
+        });
+        return true;
+    }
+    appendFinalSegment(sessionId, text) {
+        const session = this.sessions.get(sessionId);
+        if (!session)
+            return;
+        session.pendingUserText = combineTranscriptText(session.pendingUserText, text);
+    }
+    commitUserTurn(sessionId) {
+        const session = this.sessions.get(sessionId);
+        if (!session || !session.pendingUserText.trim()) {
+            return "";
+        }
+        const text = session.pendingUserText.trim();
+        addConversationTurn(session.turns, {
+            role: "user",
+            text,
+            timestamp: Date.now(),
+        });
+        session.pendingUserText = "";
+        return text;
+    }
+    getLatestUserTurn(sessionId) {
+        const session = this.sessions.get(sessionId);
+        if (!session)
+            return "";
+        if (session.pendingUserText.trim()) {
+            return session.pendingUserText;
+        }
+        const userTurns = session.turns.filter((turn) => turn.role === "user");
+        return userTurns[userTurns.length - 1]?.text ?? "";
+    }
+    setAiStreaming(sessionId, streaming) {
+        const session = this.sessions.get(sessionId);
+        if (!session)
+            return;
+        session.aiStreaming = streaming;
+    }
+    isAiStreaming(sessionId) {
+        return this.sessions.get(sessionId)?.aiStreaming ?? false;
     }
     removeSession(sessionId) {
         this.sessions.delete(sessionId);
@@ -16,35 +174,73 @@ class RealtimeManager {
     getSession(sessionId) {
         return this.sessions.get(sessionId);
     }
+    setScreenContext(sessionId, screenContext) {
+        const session = this.sessions.get(sessionId);
+        if (!session)
+            return;
+        session.screenContext = screenContext;
+    }
+    getScreenContext(sessionId) {
+        return this.sessions.get(sessionId)?.screenContext ?? "";
+    }
     attachSocket(sessionId, socket) {
         this.sockets.set(sessionId, socket);
     }
     getSocket(sessionId) {
         return this.sockets.get(sessionId);
     }
-    appendTranscript(sessionId, text) {
+    appendUserTurn(sessionId, text) {
         const session = this.sessions.get(sessionId);
         if (!session)
             return;
-        session.transcript.push(text);
+        addConversationTurn(session.turns, {
+            role: "user",
+            text: text.trim(),
+            timestamp: Date.now(),
+        });
     }
-    appendAiResponse(sessionId, token) {
+    appendAiToken(sessionId, token) {
         const session = this.sessions.get(sessionId);
         if (!session)
             return;
-        session.aiResponse.push(token);
+        session.currentAiTokens.push(token);
+    }
+    finalizeAiTurn(sessionId) {
+        const session = this.sessions.get(sessionId);
+        if (!session)
+            return "";
+        const fullResponse = session.currentAiTokens.join("");
+        if (fullResponse.trim()) {
+            addConversationTurn(session.turns, {
+                role: "assistant",
+                text: fullResponse.trim(),
+                timestamp: Date.now(),
+            });
+        }
+        session.currentAiTokens = [];
+        return fullResponse;
+    }
+    getTurns(sessionId) {
+        const session = this.sessions.get(sessionId);
+        return session ? session.turns : [];
     }
     getFullTranscript(sessionId) {
         const session = this.sessions.get(sessionId);
         if (!session)
             return "";
-        return session.transcript.join(" ");
+        return session.turns
+            .filter((t) => t.role === "user")
+            .map((t) => t.text)
+            .join(" ");
     }
     getFullAiResponse(sessionId) {
         const session = this.sessions.get(sessionId);
         if (!session)
             return "";
-        return session.aiResponse.join(" ");
+        return session.turns
+            .filter((t) => t.role === "assistant")
+            .map((t) => t.text)
+            .join(" ");
     }
 }
 export const realtimeManager = new RealtimeManager();

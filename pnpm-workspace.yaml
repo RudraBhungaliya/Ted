@@ -1,7 +1,14 @@
+packages:
+  - 'apps/*'
+
 allowBuilds:
   '@google/genai': false
   '@prisma/engines': true
   bcrypt: true
+  electron: true
   esbuild: true
   prisma: true
   protobufjs: false
+  sharp: false
+  tesseract.js: true
+  unrs-resolver: false

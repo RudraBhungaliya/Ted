@@ -7,7 +7,8 @@ export function setAuthCookies(reply, accessToken, refreshToken) {
         secure: false,
         sameSite: "lax",
         maxAge: 7 * 24 * 60 * 60, // week
-    })(reply).setCookie(REFRESH_COOKIE, refreshToken, {
+    });
+    reply.setCookie(REFRESH_COOKIE, refreshToken, {
         path: "/",
         httpOnly: true,
         secure: false,

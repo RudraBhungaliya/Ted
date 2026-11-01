@@ -13,7 +13,7 @@ import {
 import { realtimeManager } from "./manager.js";
 import { saveTranscript } from "../transcript/service.js";
 
-const deepgram = createClient(env.DEEPGRAM_API_KEY);
+const deepgram = createClient(env.DEEPGRAM_API_KEY || "mock_deepgram_api_key");
 
 interface DeepgramSession {
   connection: ReturnType<ReturnType<typeof createClient>["listen"]["live"]>;

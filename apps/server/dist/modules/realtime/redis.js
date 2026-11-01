@@ -2,6 +2,8 @@ import Redis from "ioredis";
 import { env, } from "../../config/env.js";
 const publisher = new Redis(env.REDIS_URL);
 const subscriber = new Redis(env.REDIS_URL);
+publisher.on("error", () => { });
+subscriber.on("error", () => { });
 export const REDIS_CHANNELS = {
     audio: "ted:audio",
     transcript: "ted:transcript",

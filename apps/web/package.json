@@ -6,7 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.96.2",
@@ -16,10 +17,8 @@
     "date-fns": "^4.1.0",
     "dotenv": "^17.4.2",
     "eventsource-parser": "^3.0.6",
-    "express": "^5.2.1",
     "idb": "^8.0.3",
     "lucide-react": "^1.8.0",
-    "multer": "^2.1.1",
     "next": "16.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",

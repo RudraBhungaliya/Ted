@@ -5,6 +5,11 @@ export function generateAccessToken(payload) {
         expiresIn: "7d",
     });
 }
+export function generateRefreshToken(payload) {
+    return jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: "30d",
+    });
+}
 export function verifyRefreshToken(token) {
     return jwt.verify(token, env.JWT_SECRET);
 }

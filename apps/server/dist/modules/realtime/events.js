@@ -18,6 +18,7 @@ export const REALTIME_EVENTS = {
     ai: {
         start: "ai.start",
         end: "ai.end",
+        error: "ai.error",
         interrupt: "ai.interupt",
         token: "ai.token",
     },
@@ -25,5 +26,6 @@ export const REALTIME_EVENTS = {
         start: "session.start",
         end: "session.end",
         sync: "session.sync",
+        updateMode: "session.updateMode",
     },
 };

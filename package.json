@@ -1,50 +1,29 @@
 {
-  "dependencies": {
-    "@fastify/cookie": "^11.0.2",
-    "@fastify/websocket": "^11.2.0",
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
-    "bcrypt": "^6.0.0",
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "interactjs": "^1.10.27",
-    "jsonwebtoken": "^9.0.3",
-    "multer": "^2.1.1",
-    "pg": "^8.11.3",
-    "prisma": "^7.8.0",
-    "tesseract.js": "^7.0.0",
-    "ws": "^8.20.1"
-  },
-  "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/multer": "^2.1.0",
-    "@types/node": "^25.9.1",
-    "@types/pg": "^8.20.0",
-    "@types/ws": "^8.18.1",
-    "nodemon": "^3.1.14",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
-  },
   "name": "ted",
   "version": "1.0.0",
-  "description": "Reflex is a real-time assistive system designed to provide immediate, context-aware responses during technical interviews and problem-solving sessions. It operates as a low-latency overlay rather than a traditional application, allowing users to stay within their workflow while receiving structured answers.",
-  "main": "index.js",
+  "private": true,
+  "description": "Ted - Real-time AI Meeting Assistant and Developer Copilot Overlay",
   "scripts": {
-    "dev": "nodemon --watch server/src --exec ts-node server/src/index.ts",
-    "start": "node dist/index.js"
+    "dev": "concurrently -n \"server,web\" -c \"blue,green\" \"pnpm --filter server dev\" \"pnpm --filter web dev\"",
+    "dev:server": "pnpm --filter server dev",
+    "dev:web": "pnpm --filter web dev",
+    "dev:desktop": "pnpm --filter desktop dev",
+    "dev:all": "concurrently -n \"server,web,desktop\" -c \"blue,green,magenta\" \"pnpm --filter server dev\" \"pnpm --filter web dev\" \"pnpm --filter desktop dev\"",
+    "dev:api": "cd apps/api && uvicorn app.main:app --reload --port 8000",
+    "build": "pnpm --filter server build && pnpm --filter web build && pnpm --filter desktop build",
+    "build:server": "pnpm --filter server build",
+    "build:web": "pnpm --filter web build",
+    "build:desktop": "pnpm --filter desktop build",
+    "typecheck": "pnpm --filter server typecheck && pnpm --filter web typecheck && pnpm --filter desktop typecheck",
+    "db:generate": "pnpm --filter server prisma:generate",
+    "db:migrate": "pnpm --filter server prisma:migrate",
+    "db:deploy": "pnpm --filter server prisma:deploy",
+    "db:studio": "pnpm --filter server prisma:studio",
+    "db:seed": "pnpm --filter server prisma:seed",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/RudraBhungaliya/Ted.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/RudraBhungaliya/Ted/issues"
-  },
-  "homepage": "https://github.com/RudraBhungaliya/Ted#readme"
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }
