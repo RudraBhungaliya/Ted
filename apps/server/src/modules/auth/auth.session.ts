@@ -13,28 +13,41 @@ function getSessionKey(userId : string){
 export async function createSession(
     userId : string,
 ){
-    await redis.set(
-        getSessionKey(userId),
-        "active",
-        "EX",
-        SESSION_TTL,
-    );
+    try {
+        await redis.set(
+            getSessionKey(userId),
+            "active",
+            "EX",
+            SESSION_TTL,
+        );
+    } catch (err) {
+        console.warn("Failed to write session to Redis:", err);
+    }
 }
 
 export async function validateSession(
     userId : string,
 ){
-    const session = await redis.get(
-        getSessionKey(userId),
-    );
-    return !!session;
+    try {
+        const session = await redis.get(
+            getSessionKey(userId),
+        );
+        return !!session;
+    } catch (err) {
+        console.warn("Failed to read session from Redis:", err);
+        return true; // Fallback to allowing valid JWT token if Redis check is temporarily unavailable
+    }
 }
 
 export async function deleteSession(
     userId : string,
 ){
-    await redis.del(
-        getSessionKey(userId)
-    );
+    try {
+        await redis.del(
+            getSessionKey(userId)
+        );
+    } catch (err) {
+        console.warn("Failed to delete session from Redis:", err);
+    }
 }
 
