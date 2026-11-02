@@ -3,10 +3,11 @@ import { apiClient } from "./client";
 // Auth endpoints
 export const authApi = {
   signup: (data: { email: string; password: string; name: string }) =>
-    apiClient.post("/auth/signup", data),
+    apiClient.post<{ success: boolean; data: { user: any; accessToken?: string; refreshToken?: string }; message?: string }>("/auth/signup", data),
   login: (data: { email: string; password: string }) =>
-    apiClient.post("/auth/login", data),
-  logout: () => apiClient.post("/auth/logout"),
+    apiClient.post<{ success: boolean; data: { user: any; accessToken?: string; refreshToken?: string }; message?: string }>("/auth/login", data),
+  logout: () => apiClient.post<{ success: boolean }>("/auth/logout"),
+  me: () => apiClient.get<{ success: boolean; data: { userId: string; email: string; fullName?: string } }>("/auth/me"),
 };
 
 export const billingApi = {

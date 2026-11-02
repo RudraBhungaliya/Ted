@@ -11,7 +11,14 @@ export async function authMiddleware(
     request : FastifyRequest,
     reply : FastifyReply, 
 ) {
-    const accessToken = request.cookies[ACCESS_COOKIE];
+    let accessToken = request.cookies[ACCESS_COOKIE];
+    if (!accessToken && request.headers.authorization) {
+        const parts = request.headers.authorization.split(" ");
+        if (parts.length === 2 && parts[0].toLowerCase() === "bearer") {
+            accessToken = parts[1];
+        }
+    }
+
     if (!accessToken) {
         throw new UnauthorizedError("Unauthorized: Missing access token");
     }

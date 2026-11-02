@@ -5,14 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { format } from "date-fns";
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
-  Layers,
-  ShieldAlert,
-  Sparkles,
-  User,
-  Users,
+  CheckCircle2,
+  ListTodo,
+  Copy,
+  Check,
 } from "lucide-react";
+import Navbar from "../../components/common/Navbar";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
@@ -26,13 +24,55 @@ type TimelineItem = {
   timestamp: number;
 };
 
+interface SessionData {
+  id: string;
+  title?: string;
+  mode?: "INTERVIEW" | "MEETING";
+  status?: string;
+  durationSeconds?: number;
+  startedAt?: string;
+  endedAt?: string;
+  transcripts?: Array<{
+    id: string;
+    text: string;
+    createdAt?: string;
+    speakerType?: string;
+    speakerName?: string;
+    speaker?: string;
+  }>;
+  aiMessages?: Array<{
+    id: string;
+    text: string;
+    createdAt?: string;
+  }>;
+  timeline?: TimelineItem[];
+  summary?: {
+    overview?: string;
+    score?: number;
+    strengths?: string[];
+    keyPoints?: string[];
+    weaknesses?: string[];
+    recommendations?: string[];
+    actionItems?: string[];
+  };
+  analytics?: {
+    confidenceScore?: number;
+    fillerCount?: number;
+    totalWords?: number;
+    usesStarFormat?: boolean;
+    technicalScore?: number;
+    communicationScore?: number;
+  };
+}
+
 export default function SessionPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.sessionId as string;
 
-  const [session, setSession] = useState<any>(null);
+  const [session, setSession] = useState<SessionData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     async function loadSession() {
@@ -59,290 +99,286 @@ export default function SessionPage() {
     }
   }, [sessionId]);
 
+  const handleCopyTranscript = () => {
+    if (!session?.timeline) return;
+    const fullText = session.timeline
+      .map((item: TimelineItem) => `[${item.speakerName}]: ${item.text}`)
+      .join("\n\n");
+    navigator.clipboard.writeText(fullText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#090D1A] text-zinc-400 flex items-center justify-center font-medium">
-        Loading session configurations...
+      <main className="min-h-screen bg-[#FAF9F6] text-stone-900 flex items-center justify-center font-sans">
+        <div className="text-center">
+          <div className="w-8 h-8 border-3 border-stone-800 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-stone-500 text-sm font-medium">
+            Loading transcript & notes...
+          </p>
+        </div>
       </main>
     );
   }
 
   if (!session) {
     return (
-      <main className="min-h-screen bg-[#090D1A] text-white flex flex-col gap-4 items-center justify-center">
-        <div className="flex items-center gap-2 text-red-400">
-          <ShieldAlert className="w-5 h-5" />
-          <span className="font-semibold">Session not found</span>
+      <main className="min-h-screen bg-[#FAF9F6] text-stone-900 font-sans">
+        <Navbar />
+        <div className="max-w-md mx-auto px-6 py-24 text-center">
+          <div className="bg-white p-8 rounded-3xl border border-stone-200/90 shadow-sm">
+            <h2 className="text-lg font-bold text-stone-900 mb-2">
+              Session Not Found
+            </h2>
+            <p className="text-stone-500 text-xs mb-6 leading-relaxed">
+              We couldn&apos;t locate the session transcript. It may have been deleted or moved.
+            </p>
+            <button
+              onClick={() => router.push("/history")}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-stone-900 text-white font-medium text-xs hover:bg-stone-800 transition-colors shadow-xs"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to History</span>
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => router.push("/history")}
-          className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-zinc-200 hover:bg-white/10 transition-colors cursor-pointer"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to History
-        </button>
       </main>
     );
   }
 
   const isMeetingMode = session.mode === "MEETING";
+  const durationText = session.durationSeconds
+    ? `${Math.floor(session.durationSeconds / 60)}m ${session.durationSeconds % 60}s`
+    : "In progress";
 
   return (
-    <main className="min-h-screen bg-[#090D1A] text-zinc-100 p-8 select-none">
-      <div className="max-w-4xl mx-auto">
-        {/* Top Header Navigation Panel */}
-        <div className="flex items-center justify-between border-b border-white/5 pb-6 mb-8">
-          <div>
-            <button
-              onClick={() => router.push("/history")}
-              className="group mb-3 flex items-center gap-1.5 text-xs font-semibold text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
-              Back to History
-            </button>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
-              {session.title || "TED Session"}{" "}
-              <span className="text-zinc-600 font-mono text-xl font-normal ml-1">
-                #{session.id.substring(0, 8)}
+    <main className="min-h-screen bg-[#FAF9F6] text-stone-900 font-sans selection:bg-amber-200 pb-20">
+      <Navbar />
+
+      <div className="max-w-4xl mx-auto px-6 pt-8">
+        {/* Breadcrumb Back */}
+        <button
+          onClick={() => router.push("/history")}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-500 hover:text-stone-900 transition-colors mb-6 cursor-pointer group"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          Back to Sessions
+        </button>
+
+        {/* Session Card Header */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-xs mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-stone-100 gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-2.5 py-0.5 rounded-full border ${
+                    isMeetingMode
+                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                      : "bg-orange-50 text-orange-800 border-orange-200"
+                  }`}
+                >
+                  {isMeetingMode ? "Meeting" : "Interview"}
+                </span>
+
+                <span
+                  className={`text-[10px] font-medium px-2.5 py-0.5 rounded-full border ${
+                    session.status === "COMPLETED"
+                      ? "bg-stone-100 text-stone-700 border-stone-200"
+                      : "bg-amber-50 text-amber-800 border-amber-200"
+                  }`}
+                >
+                  {session.status === "COMPLETED" ? "Archived" : "Active"}
+                </span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900">
+                {session.title || (isMeetingMode ? "Meeting Discussion" : "Interview Session")}
+              </h1>
+              <p className="text-xs text-stone-400 font-mono mt-1">
+                Session ID: {session.id}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                onClick={handleCopyTranscript}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-medium transition-colors shadow-2xs cursor-pointer"
+              >
+                {copied ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5 text-stone-400" />
+                    <span>Copy Text</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/70">
+              <span className="text-stone-400 text-[10px] uppercase font-semibold block mb-0.5">
+                Date
               </span>
-            </h1>
-          </div>
-
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-bold border uppercase tracking-wider ${
-              session.status === "COMPLETED"
-                ? "bg-green-500/10 border-green-500/20 text-green-400"
-                : "bg-blue-500/10 border-blue-500/20 text-blue-400"
-            }`}
-          >
-            {session.status}
-          </span>
-        </div>
-
-        {/* Dynamic Metadata Feature Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-            <div className="flex items-center gap-2 text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">
-              {isMeetingMode ? (
-                <Users className="w-3.5 h-3.5 text-purple-400" />
-              ) : (
-                <Layers className="w-3.5 h-3.5 text-indigo-400" />
-              )}
-              Mode
+              <span className="font-semibold text-stone-800">
+                {session.startedAt ? format(new Date(session.startedAt), "MMM d, yyyy") : "Recent"}
+              </span>
             </div>
-            <p className="text-sm font-bold text-zinc-200">{session.mode}</p>
-          </div>
 
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-            <div className="flex items-center gap-2 text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">
-              <Calendar className="w-3.5 h-3.5 text-purple-400" /> Date
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/70">
+              <span className="text-stone-400 text-[10px] uppercase font-semibold block mb-0.5">
+                Duration
+              </span>
+              <span className="font-semibold text-stone-800">{durationText}</span>
             </div>
-            <p className="text-sm font-bold text-zinc-200">
-              {format(new Date(session.startedAt), "MMM d, yyyy")}
-            </p>
-          </div>
 
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-            <div className="flex items-center gap-2 text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">
-              <Clock className="w-3.5 h-3.5 text-emerald-400" /> Started At
-            </div>
-            <p className="text-sm font-bold text-zinc-200">
-              {format(new Date(session.startedAt), "h:mm a")}
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-            <div className="flex items-center gap-2 text-zinc-500 text-xs font-semibold uppercase tracking-wider mb-1">
-              <Clock className="w-3.5 h-3.5 text-amber-400" /> Duration
-            </div>
-            <p className="text-sm font-bold text-zinc-200">
-              {session.durationSeconds
-                ? `${Math.floor(session.durationSeconds / 60)
-                    .toString()
-                    .padStart(
-                      2,
-                      "0",
-                    )}:${(session.durationSeconds % 60).toString().padStart(2, "0")}`
-                : "Running"}
-            </p>
-          </div>
-        </div>
-
-        {/* Analytics Section */}
-        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 mb-8">
-          <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4">
-            Performance Analytics
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <div className="text-zinc-500 text-xs uppercase tracking-wide">
-                Total Words
-              </div>
-              <div className="text-2xl font-black text-zinc-200 mt-1">
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/70">
+              <span className="text-stone-400 text-[10px] uppercase font-semibold block mb-0.5">
+                Words Logged
+              </span>
+              <span className="font-semibold text-stone-800">
                 {session.analytics?.totalWords ?? 0}
-              </div>
+              </span>
             </div>
-            <div>
-              <div className="text-zinc-500 text-xs uppercase tracking-wide">
-                Filler Count
-              </div>
-              <div className="text-2xl font-black text-zinc-200 mt-1">
-                {session.analytics?.fillerCount ?? 0}
-              </div>
-            </div>
-            <div>
-              <div className="text-zinc-500 text-xs uppercase tracking-wide">
-                Confidence Score
-              </div>
-              <div className="text-2xl font-black text-indigo-400 mt-1">
-                {session.analytics?.confidenceScore ?? 0}%
-              </div>
-            </div>
-            <div>
-              <div className="text-zinc-500 text-xs uppercase tracking-wide">
-                Communication
-              </div>
-              <div className="text-2xl font-black text-purple-400 mt-1">
-                {session.analytics?.communicationScore ?? 0}%
-              </div>
+
+            <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/70">
+              <span className="text-stone-400 text-[10px] uppercase font-semibold block mb-0.5">
+                Confidence
+              </span>
+              <span className="font-semibold text-stone-800">
+                {session.analytics?.confidenceScore
+                  ? `${session.analytics.confidenceScore}%`
+                  : "N/A"}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Summary Details Section Block */}
-        <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 mb-8">
-          <h2 className="text-sm font-bold text-zinc-400 uppercase tracking-wider mb-4">
-            AI Summary Context
-          </h2>
-          {session.summary ? (
-            <div className="space-y-4">
-              <p className="text-sm text-zinc-300 leading-relaxed">
+        {/* Structured Summary Card (if available) */}
+        {session.summary && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-xs mb-8">
+            <h2 className="text-base font-bold text-stone-900 tracking-tight mb-3">
+              Summary & Takeaways
+            </h2>
+            {session.summary.overview && (
+              <p className="text-sm text-stone-700 leading-relaxed mb-6">
                 {session.summary.overview}
               </p>
+            )}
 
-              {session.summary.keyPoints?.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-stone-100">
+              {(session.summary.keyPoints?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="text-xs font-bold text-zinc-400 uppercase mb-2">
+                  <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     Key Highlights
-                  </h4>
-                  <ul className="list-disc pl-5 text-sm text-zinc-400 space-y-1">
-                    {session.summary.keyPoints.map(
-                      (point: string, idx: number) => (
-                        <li key={idx}>{point}</li>
-                      ),
-                    )}
+                  </h3>
+                  <ul className="space-y-2 text-xs text-stone-600 leading-relaxed">
+                    {session.summary.keyPoints!.map((point: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-stone-400 mt-1.5 shrink-0" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
 
-              {session.summary.actionItems?.length > 0 && (
+              {(session.summary.actionItems?.length ?? 0) > 0 && (
                 <div>
-                  <h4 className="text-xs font-bold text-zinc-400 uppercase mb-2">
+                  <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                    <ListTodo className="w-3.5 h-3.5 text-blue-600" />
                     Action Items
-                  </h4>
-                  <ul className="list-disc pl-5 text-sm text-zinc-400 space-y-1">
-                    {session.summary.actionItems.map(
-                      (item: string, idx: number) => (
-                        <li key={idx}>{item}</li>
-                      ),
-                    )}
+                  </h3>
+                  <ul className="space-y-2 text-xs text-stone-600 leading-relaxed">
+                    {session.summary.actionItems!.map((item: string, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
             </div>
-          ) : (
-            <p className="text-xs text-zinc-500 italic">
-              No structured data summaries computed for this session execution.
-            </p>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* New Unified Conversations Interleaved Chronological Matrix Feed Container */}
-        <div className="rounded-2xl border border-white/5 bg-neutral-900/10 p-6 backdrop-blur-md">
-          <div className="mb-6">
-            <h3 className="text-sm font-bold tracking-wide text-zinc-100 uppercase">
-              Conversation Timeline
-            </h3>
-            <p className="mt-0.5 text-[11px] text-zinc-500">
-              Unified real-time flowchart mapping dialog context step-by-step.
+        {/* Dialogue Stream Timeline */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-xs">
+          <div className="mb-6 pb-4 border-b border-stone-100">
+            <h2 className="text-base font-bold text-stone-900 tracking-tight">
+              Conversation Transcript
+            </h2>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Chronological turns recorded during the live audio stream.
             </p>
           </div>
 
-          <div className="relative ml-3 border-l border-zinc-800/80 pl-6 space-y-6 py-2">
+          <div className="space-y-4">
             {session.timeline?.map((item: TimelineItem) => {
               const isUser = item.role === "user";
-              const isAi = item.role === "ai";
+              const isAssistant = item.role === "ai";
 
               return (
-                <div key={item.id} className="relative group">
-                  {/* Color Coded Timeline Anchor Circle */}
-                  <div
-                    className={`absolute -left-[29px] top-1.5 h-2 w-2 rounded-full border bg-neutral-950 transition-all duration-300 ${
-                      isAi
-                        ? "border-indigo-500 ring-4 ring-indigo-500/15"
-                        : isUser
-                          ? "border-emerald-500 ring-4 ring-emerald-500/10"
-                          : "border-purple-500 ring-4 ring-purple-500/10"
-                    }`}
-                  />
-
-                  {/* Message Card Body Layout Element */}
-                  <div
-                    className={`rounded-xl border p-4 transition-colors duration-200 ${
-                      isAi
-                        ? "bg-indigo-500/[0.03] border-indigo-500/15 hover:border-indigo-500/25"
-                        : isUser
-                          ? "bg-emerald-500/[0.02] border-emerald-500/10 hover:border-emerald-500/20"
-                          : "bg-neutral-900/40 border-white/5 hover:border-white/10"
-                    }`}
-                  >
-                    {/* Speaker Header Meta Info Layout Container */}
-                    <div className="flex items-center justify-between mb-1.5 select-none">
+                <div
+                  key={item.id}
+                  className={`p-4 rounded-2xl border transition-all ${
+                    isAssistant
+                      ? "bg-amber-50/70 border-amber-200/90 shadow-2xs"
+                      : isUser
+                      ? "bg-white border-stone-200/90 shadow-2xs"
+                      : "bg-stone-50/80 border-stone-200/70"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
                       <span
-                        className={`text-xs font-bold tracking-wide uppercase flex items-center gap-1.5 ${
-                          isAi
-                            ? "text-indigo-400"
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isAssistant
+                            ? "bg-amber-600"
                             : isUser
-                              ? "text-emerald-400"
-                              : "text-purple-400"
+                            ? "bg-emerald-600"
+                            : "bg-stone-500"
+                        }`}
+                      />
+                      <span
+                        className={`text-xs font-bold uppercase tracking-wider ${
+                          isAssistant
+                            ? "text-amber-900"
+                            : isUser
+                            ? "text-emerald-900"
+                            : "text-stone-700"
                         }`}
                       >
-                        {isAi && (
-                          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                        )}
-                        {isUser && (
-                          <User className="w-3.5 h-3.5 text-emerald-400" />
-                        )}
                         {item.speakerName}
-                        <span className="text-[9px] text-zinc-500 font-normal normal-case opacity-80 ml-1">
-                          •{" "}
-                          {item.role === "user"
-                            ? "You (Microphone)"
-                            : item.role === "ai"
-                              ? "Suggested Answer"
-                              : "Meeting Stream"}
-                        </span>
                       </span>
-
-                      <span className="font-mono text-[10px] tracking-tight text-zinc-500">
-                        {format(new Date(item.timestamp), "hh:mm:ss a")}
+                      <span className="text-[11px] text-stone-400 font-normal">
+                        • {isUser ? "You" : isAssistant ? "Ted Note" : "Speaker"}
                       </span>
                     </div>
 
-                    {/* Content Transcription Box Paragraph Element */}
-                    <p className="text-sm leading-relaxed text-zinc-300 whitespace-pre-wrap select-text selection:bg-indigo-500/20 font-medium">
-                      {item.text}
-                    </p>
+                    <span className="text-[11px] text-stone-400 font-mono">
+                      {format(new Date(item.timestamp), "h:mm:ss a")}
+                    </span>
                   </div>
+
+                  <p className="text-sm leading-relaxed text-stone-800 whitespace-pre-wrap">
+                    {item.text}
+                  </p>
                 </div>
               );
             })}
 
             {(!session.timeline || session.timeline.length === 0) && (
-              <div className="rounded-xl border border-dashed border-white/5 p-8 text-center">
-                <p className="text-xs text-zinc-500 italic">
-                  No tracking sequences or conversation strings compiled inside
-                  the target workspace.
-                </p>
+              <div className="py-12 text-center text-stone-400 text-xs">
+                No conversation turns recorded for this session.
               </div>
             )}
           </div>

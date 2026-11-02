@@ -10,7 +10,7 @@ function labelForTurn(turn: {
   if (turn.speakerName) return turn.speakerName;
   if (turn.role === "user") return "You";
   if (turn.role === "interviewer") return "Interviewer";
-  if (turn.role === "ai" || turn.role === "assistant") return "TED (AI)";
+  if (turn.role === "ai" || turn.role === "assistant") return "Ted Note";
   return "Participant";
 }
 
@@ -28,21 +28,25 @@ export default function TranscriptView() {
   }
 
   return (
-    <div className="flex flex-col gap-3 text-[13px]">
+    <div className="flex flex-col gap-3 text-sm">
       {history.map((turn) => {
         const label = labelForTurn(turn);
-        const isAi = turn.role === "ai" || turn.role === "assistant";
+        const isAssistant = turn.role === "ai" || turn.role === "assistant";
+        const isUser = turn.role === "user";
 
-        if (isAi) {
+        if (isAssistant) {
           return (
             <div
               key={turn.id}
-              className="rounded-lg border border-indigo-500/15 bg-indigo-500/5 p-2.5"
+              className="rounded-xl border border-amber-200/90 bg-amber-50/60 p-3.5 shadow-2xs"
             >
-              <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-indigo-400">
-                {label}
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-900">
+                  {label}
+                </span>
               </div>
-              <div className="whitespace-pre-wrap break-words text-zinc-200">
+              <div className="whitespace-pre-wrap break-words text-stone-800 leading-relaxed">
                 {turn.text}
               </div>
             </div>
@@ -50,11 +54,25 @@ export default function TranscriptView() {
         }
 
         return (
-          <div key={turn.id} className="space-y-0.5">
-            <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-              {label}
-            </span>
-            <div className="whitespace-pre-wrap break-words text-zinc-300">
+          <div
+            key={turn.id}
+            className={`rounded-xl border p-3.5 shadow-2xs ${
+              isUser
+                ? "bg-white border-stone-200/90"
+                : "bg-stone-50 border-stone-200/80"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isUser ? "bg-emerald-600" : "bg-stone-500"
+                }`}
+              />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-600">
+                {label}
+              </span>
+            </div>
+            <div className="whitespace-pre-wrap break-words text-stone-900 leading-relaxed">
               {turn.text}
             </div>
           </div>
@@ -62,17 +80,20 @@ export default function TranscriptView() {
       })}
 
       {(finalTranscript || partialTranscript) && (
-        <div className="space-y-1">
-          <span className="block text-[10px] uppercase tracking-wider text-zinc-500">
-            Live
-          </span>
+        <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50/80 p-3.5">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-rose-700">
+              Live Speech
+            </span>
+          </div>
           {finalTranscript && (
-            <div className="whitespace-pre-wrap break-words text-zinc-200">
+            <div className="whitespace-pre-wrap break-words text-stone-900 leading-relaxed">
               {finalTranscript}
             </div>
           )}
           {partialTranscript && (
-            <div className="whitespace-pre-wrap break-words italic text-zinc-500">
+            <div className="whitespace-pre-wrap break-words text-stone-500 italic mt-1 leading-relaxed">
               {partialTranscript}
             </div>
           )}
@@ -80,11 +101,14 @@ export default function TranscriptView() {
       )}
 
       {aiResponse && (
-        <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-2.5">
-          <div className="mb-1 text-[9px] font-bold uppercase tracking-wider text-indigo-400">
-            TED (AI)
+        <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-3.5 shadow-xs">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-900">
+              Suggested Note
+            </span>
           </div>
-          <div className="whitespace-pre-wrap break-words text-zinc-100">
+          <div className="whitespace-pre-wrap break-words text-stone-900 leading-relaxed font-medium">
             {aiResponse}
           </div>
         </div>

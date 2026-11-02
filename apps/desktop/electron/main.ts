@@ -6,6 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
+const WEB_APP_URL = process.env.WEB_URL || "http://localhost:3000";
 
 function createMainWindow() {
   mainWindow = new BrowserWindow({
@@ -23,7 +24,7 @@ function createMainWindow() {
     },
   });
 
-  mainWindow.loadURL("http://localhost:3000");
+  mainWindow.loadURL(WEB_APP_URL);
 
   mainWindow.on("closed", () => {
     mainWindow = null;
@@ -53,7 +54,7 @@ function createOverlayWindow() {
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   overlayWindow.setIgnoreMouseEvents(false, { forward: true });
 
-  overlayWindow.loadURL("http://localhost:3000/overlay");
+  overlayWindow.loadURL(`${WEB_APP_URL}/overlay`);
 
   overlayWindow.on("closed", () => {
     overlayWindow = null;
@@ -140,4 +141,4 @@ app.on("activate", () => {
   if (!mainWindow) {
     createMainWindow();
   }
-});
+});

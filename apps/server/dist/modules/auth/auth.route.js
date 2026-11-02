@@ -9,6 +9,9 @@ import { env } from "../../config/env.js";
 import { exchangeGoogleCodeForTokens, getGoogleUserProfile, } from "../../lib/oauth.js";
 export async function authRoutes(app) {
     app.get("/google", async (_, reply) => {
+        if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+            return reply.redirect(`${env.CLIENT_REDIRECT_URL}/login?error=google_not_configured`);
+        }
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${env.GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(env.GOOGLE_REDIRECT_URI)}&response_type=code&scope=openid%20profile%20email&prompt=select_account`;
         return reply.redirect(authUrl);
     });
@@ -41,6 +44,8 @@ export async function authRoutes(app) {
             success: true,
             data: {
                 user: result.user,
+                accessToken: result.accessToken,
+                refreshToken: result.refreshToken,
             },
         });
     });
@@ -52,6 +57,8 @@ export async function authRoutes(app) {
             success: true,
             data: {
                 user: result.user,
+                accessToken: result.accessToken,
+                refreshToken: result.refreshToken,
             },
         });
     });

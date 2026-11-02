@@ -580,10 +580,10 @@ export default function FloatingPanel({
               }
         }
       >
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-950/80 backdrop-blur-xl border border-white/8 shadow-[0_8px_30px_rgb(0,0,0,0.5)]">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur-xl border border-stone-200 shadow-md">
           <div
             onMouseDown={handleMouseDown}
-            className="cursor-grab active:cursor-grabbing text-zinc-500 hover:text-zinc-300 p-1 rounded-md"
+            className="cursor-grab active:cursor-grabbing text-stone-400 hover:text-stone-600 p-1 rounded-md"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <circle cx="9" cy="5" r="1" />
@@ -596,9 +596,9 @@ export default function FloatingPanel({
           </div>
           <button
             onClick={() => setPhase("mode-selection")}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 shadow-md shadow-indigo-600/20 cursor-pointer transition-all hover:scale-105 active:scale-95 font-semibold text-xs tracking-wide whitespace-nowrap"
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-stone-900 text-white hover:bg-stone-800 shadow-xs cursor-pointer transition-all active:scale-95 font-semibold text-xs tracking-wide whitespace-nowrap"
           >
-            <Zap className="w-3.5 h-3.5 fill-white/10 text-white" />
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
             Start Ted
           </button>
         </div>
@@ -613,7 +613,7 @@ export default function FloatingPanel({
         ref={panelRef}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`z-50 rounded-2xl overflow-hidden border select-none bg-neutral-950/85 backdrop-blur-3xl border-white/12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)] ${isIframe ? "absolute w-full h-full inset-0" : "fixed"}`}
+        className={`z-50 rounded-3xl overflow-hidden border select-none bg-white/95 backdrop-blur-2xl border-stone-200/90 shadow-xl ${isIframe ? "absolute w-full h-full inset-0" : "fixed"}`}
         style={
           isIframe
             ? { width: "100%", height: "100%", left: 0, top: 0 }
@@ -633,55 +633,52 @@ export default function FloatingPanel({
             onMouseDown={handleMouseDown}
             className="absolute top-0 left-0 right-0 h-10 cursor-grab active:cursor-grabbing flex items-center justify-center"
           >
-            <div className="w-8 h-1 bg-white/15 rounded-full" />
+            <div className="w-8 h-1 bg-stone-300 rounded-full" />
           </div>
 
           <button
             onClick={() => setPhase("idle")}
-            className="absolute top-4 right-4 text-zinc-500 hover:text-zinc-200 p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            className="absolute top-4 right-4 text-stone-400 hover:text-stone-700 p-1.5 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
 
-          <div className="mb-4 text-center">
-            <h3 className="text-sm font-bold text-zinc-100 tracking-wide mb-1">
-              Select Session Mode
+          <div className="mb-5 text-center">
+            <h3 className="text-base font-bold text-stone-900 tracking-tight mb-1">
+              Choose Session Mode
             </h3>
-            <p className="text-[11px] text-zinc-400 max-w-[240px]">
-              Choose your target configuration. Mode adjustments are locked once
-              execution begins.
+            <p className="text-xs text-stone-500 max-w-[240px] leading-relaxed">
+              Select how you would like Ted to assist your conversation today.
             </p>
           </div>
 
-
-
-          <div className="flex flex-col gap-2.5 w-full max-w-[260px]">
+          <div className="flex flex-col gap-3 w-full max-w-[260px]">
             <button
               onClick={() => handleSelectMode("interview")}
-              className="flex items-center gap-3 w-full text-left p-3.5 rounded-xl border border-white/5 bg-neutral-900/50 hover:bg-neutral-900 hover:border-indigo-500/40 text-zinc-300 hover:text-white transition-all cursor-pointer group"
+              className="flex items-center gap-3 w-full text-left p-3.5 rounded-2xl border border-stone-200 bg-white hover:border-orange-300 hover:bg-orange-50/40 text-stone-800 transition-all cursor-pointer group shadow-2xs"
             >
-              <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 group-hover:bg-indigo-500/20 transition-colors">
+              <div className="p-2 rounded-xl bg-orange-100 text-orange-800">
                 <Briefcase className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-semibold">Assistant Mode</div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">
-                  Real-time AI assistance & suggestions
+                <div className="text-xs font-semibold text-stone-900">Assistant Mode</div>
+                <div className="text-[11px] text-stone-500 mt-0.5">
+                  Interview speaking cues & guidance
                 </div>
               </div>
             </button>
 
             <button
               onClick={() => handleSelectMode("meeting")}
-              className="flex items-center gap-3 w-full text-left p-3.5 rounded-xl border border-white/5 bg-neutral-900/50 hover:bg-neutral-900 hover:border-indigo-500/40 text-zinc-300 hover:text-white transition-all cursor-pointer group"
+              className="flex items-center gap-3 w-full text-left p-3.5 rounded-2xl border border-stone-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/40 text-stone-800 transition-all cursor-pointer group shadow-2xs"
             >
-              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 transition-colors">
+              <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800">
                 <Coffee className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-semibold">Meeting Mode</div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">
-                  Comprehensive real-time transcript
+                <div className="text-xs font-semibold text-stone-900">Meeting Mode</div>
+                <div className="text-[11px] text-stone-500 mt-0.5">
+                  Comprehensive meeting notes
                 </div>
               </div>
             </button>
@@ -722,11 +719,11 @@ export default function FloatingPanel({
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.12);
+          background: #d6d3d1;
           border-radius: 99px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.25);
+          background: #a8a29e;
         }
       `}</style>
 
@@ -734,16 +731,16 @@ export default function FloatingPanel({
         ref={panelRef}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`z-50 rounded-2xl overflow-hidden border select-none transition-all duration-300 ease-out
+        className={`z-50 rounded-3xl overflow-hidden border select-none transition-all duration-200 ease-out text-stone-900
           ${isIframe ? "absolute w-full h-full inset-0" : "fixed"}
           ${
             isStealth
-              ? "bg-neutral-950/40 backdrop-blur-md border-white/5 opacity-50 hover:opacity-100 shadow-xl"
-              : `bg-neutral-950/75 backdrop-blur-3xl border-white/8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.8)]
+              ? "bg-white/90 backdrop-blur-md border-stone-300 opacity-70 hover:opacity-100 shadow-md"
+              : `bg-white/95 backdrop-blur-2xl border-stone-200/90 shadow-[0_20px_45px_-12px_rgba(0,0,0,0.12)]
                  ${
                    isAiResponding
-                     ? "shadow-indigo-500/10 border-indigo-500/35 ring-1 ring-indigo-500/20"
-                     : "shadow-black/50"
+                     ? "border-amber-300 ring-2 ring-amber-100"
+                     : "border-stone-200"
                  }`
           }`}
         style={
@@ -754,7 +751,7 @@ export default function FloatingPanel({
                 left: 0,
                 top: 0,
                 transform: "none",
-                transition: "border-color 0.5s ease, shadow 0.5s ease",
+                transition: "border-color 0.3s ease",
               }
             : {
                 width: `${size.width}px`,
@@ -767,74 +764,61 @@ export default function FloatingPanel({
                 transition:
                   isDragging || isResizing
                     ? "none"
-                    : "all 0.15s ease-out, border-color 0.5s ease, shadow 0.5s ease",
+                    : "all 0.15s ease-out, border-color 0.3s ease",
               }
         }
       >
-        {/* Glow Effects (only in standard mode) */}
-        {!isStealth && (
-          <>
-            <div
-              className={`absolute top-0 left-0 w-full h-1/2 bg-linear-to-b ${isAiResponding ? "from-indigo-500/10" : "from-indigo-600/5"} to-transparent blur-3xl pointer-events-none transition-all duration-700`}
-            />
-            <div
-              className={`absolute bottom-0 right-0 w-32 h-32 ${isAiResponding ? "bg-indigo-500/5" : "bg-purple-500/5"} rounded-full blur-3xl pointer-events-none transition-all duration-700`}
-            />
-          </>
-        )}
-
         {/* Content container */}
         <div className={`relative z-10 w-full h-full flex flex-col ${isStealth ? "p-2.5" : "p-4"}`}>
           {/* Top Bar / Drag Handle */}
           <div
             onMouseDown={handleMouseDown}
-            className="flex items-center justify-between mb-3 select-none cursor-grab active:cursor-grabbing p-1.5 -m-1.5 rounded-xl hover:bg-white/5 transition-colors"
+            className="flex items-center justify-between mb-3 select-none cursor-grab active:cursor-grabbing p-1.5 -m-1.5 rounded-xl hover:bg-stone-100 transition-colors"
           >
             {/* Grip handle indicator */}
             <div className="absolute top-1.5 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none opacity-40">
-              <span className="w-1 h-1 rounded-full bg-zinc-500" />
-              <span className="w-1 h-1 rounded-full bg-zinc-500" />
-              <span className="w-1 h-1 rounded-full bg-zinc-500" />
+              <span className="w-1 h-1 rounded-full bg-stone-400" />
+              <span className="w-1 h-1 rounded-full bg-stone-400" />
+              <span className="w-1 h-1 rounded-full bg-stone-400" />
             </div>
 
             {/* Listening Wave & Status Info */}
             <div className="flex items-center gap-2">
               <div className="flex items-end gap-0.75 h-4 px-1">
                 <div
-                  className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-1 ${!isConnected ? "paused" : ""}`}
+                  className={`w-0.75 rounded-full bg-orange-500 voice-bar voice-bar-1 ${!isConnected ? "paused" : ""}`}
                 />
                 <div
-                  className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-2 ${!isConnected ? "paused" : ""}`}
+                  className={`w-0.75 rounded-full bg-amber-500 voice-bar voice-bar-2 ${!isConnected ? "paused" : ""}`}
                 />
                 <div
-                  className={`w-0.75 rounded-full bg-indigo-400 voice-bar voice-bar-3 ${!isConnected ? "paused" : ""}`}
+                  className={`w-0.75 rounded-full bg-amber-500 voice-bar voice-bar-3 ${!isConnected ? "paused" : ""}`}
                 />
                 <div
-                  className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-4 ${!isConnected ? "paused" : ""}`}
+                  className={`w-0.75 rounded-full bg-emerald-500 voice-bar voice-bar-4 ${!isConnected ? "paused" : ""}`}
                 />
                 <div
-                  className={`w-0.75 rounded-full bg-purple-400 voice-bar voice-bar-5 ${!isConnected ? "paused" : ""}`}
+                  className={`w-0.75 rounded-full bg-emerald-600 voice-bar voice-bar-5 ${!isConnected ? "paused" : ""}`}
                 />
                 <div
-                  className={`w-0.75 rounded-full bg-pink-400 voice-bar voice-bar-6 ${!isConnected ? "paused" : ""}`}
+                  className={`w-0.75 rounded-full bg-blue-500 voice-bar voice-bar-6 ${!isConnected ? "paused" : ""}`}
                 />
               </div>
 
               <div className="flex flex-col">
-                <span className="font-semibold text-xs tracking-wide text-zinc-200">
+                <span className="font-semibold text-xs tracking-tight text-stone-900">
                   {isAiResponding ? (
-                    <span className="text-indigo-400 font-bold flex items-center gap-1.5">
-                      AI Responding
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
+                    <span className="text-amber-800 font-bold flex items-center gap-1.5">
+                      Suggested Note Ready
                     </span>
                   ) : isStealth ? (
-                    "Ted Stealth"
+                    "Ted (Compact)"
                   ) : (
-                    sessionMode === "meeting" ? "Meeting Session" : "Assistant Session"
+                    sessionMode === "meeting" ? "Meeting Notes" : "Interview Notes"
                   )}
                 </span>
                 {!isStealth && (
-                  <span className="text-[9px] text-zinc-500 font-mono tracking-wider uppercase -mt-0.5">
+                  <span className="text-[9px] text-stone-600 uppercase font-medium tracking-wider -mt-0.5">
                     {isConnected ? `${status}` : "Disconnected"}
                   </span>
                 )}
@@ -848,21 +832,21 @@ export default function FloatingPanel({
                   onClick={toggleScreenAssist}
                   className={`rounded-lg p-1.5 transition-all border border-transparent cursor-pointer flex items-center gap-1 ${
                     screenAssistEnabled
-                      ? "text-indigo-400 bg-indigo-500/10 border-indigo-500/20"
-                      : "text-zinc-400 hover:text-zinc-100 hover:bg-white/10 hover:border-white/5"
+                      ? "text-blue-700 bg-blue-50 border-blue-200"
+                      : "text-stone-500 hover:text-stone-900 hover:bg-stone-100"
                   }`}
                   title={screenAssistEnabled ? "Disable Screen Assist" : "Enable Screen Assist"}
                 >
                   <Monitor className="w-3.5 h-3.5" />
                   {screenAssistEnabled && (
-                    <span className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
                   )}
                 </button>
               )}
               <button
                 onClick={toggleStealth}
-                className="text-zinc-400 hover:text-zinc-100 hover:bg-white/10 rounded-lg p-1.5 transition-all border border-transparent hover:border-white/5 cursor-pointer"
-                title={isStealth ? "Expand" : "Stealth Mode"}
+                className="text-stone-500 hover:text-stone-900 hover:bg-stone-100 rounded-lg p-1.5 transition-all cursor-pointer"
+                title={isStealth ? "Expand" : "Compact Mode"}
               >
                 {isStealth ? (
                   <Maximize2 className="w-3.5 h-3.5" />
@@ -872,8 +856,8 @@ export default function FloatingPanel({
               </button>
               <button
                 onClick={onStop}
-                className="text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg p-1.5 transition-all border border-transparent hover:border-red-500/10 cursor-pointer"
-                title="Stop & Close"
+                className="text-stone-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg p-1.5 transition-all cursor-pointer"
+                title="Stop Session"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -882,68 +866,47 @@ export default function FloatingPanel({
 
           {/* Screen Assist Display */}
           {screenAssistEnabled && screenAnalysis && !isStealth && (
-            <div className="mb-3 rounded-xl border border-indigo-500/15 bg-indigo-500/5 p-3 text-xs text-zinc-300">
-              <div className="mb-1 font-semibold text-indigo-300 flex items-center gap-1.5">
-                <Monitor className="w-3.5 h-3.5 text-indigo-400" />
-                Screen Insight
+            <div className="mb-3 rounded-2xl border border-blue-200/80 bg-blue-50/60 p-3 text-xs text-blue-950 shadow-2xs">
+              <div className="mb-1 font-semibold text-blue-900 flex items-center gap-1.5">
+                <Monitor className="w-3.5 h-3.5 text-blue-600" />
+                Screen Context
               </div>
-              <div className="whitespace-pre-line text-zinc-400 leading-relaxed max-h-24 overflow-y-auto custom-scrollbar">
+              <div className="whitespace-pre-line text-blue-900/80 leading-relaxed max-h-24 overflow-y-auto custom-scrollbar">
                 {screenAnalysis}
               </div>
             </div>
           )}
 
-          {/* Main Interview Q&A Layout (Cluely style) */}
-          <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${isStealth ? "gap-2" : "gap-3.5"}`}>
-            {/* Section 1: QUESTION */}
-            <div className={`flex-none rounded-xl border border-zinc-800 bg-zinc-900/40 ${isStealth ? "p-2" : "p-4"}`}>
+          {/* Main Interview Q&A Layout */}
+          <div className={`flex-1 flex flex-col min-h-0 overflow-hidden ${isStealth ? "gap-2" : "gap-3"}`}>
+            {/* Section 1: QUESTION / INPUT */}
+            <div className={`flex-none rounded-2xl border border-stone-200/90 bg-stone-50/80 shadow-2xs ${isStealth ? "p-2" : "p-3.5"}`}>
               {!isStealth && (
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5 font-bold select-none">
-                  {sessionMode === "meeting" ? "Meeting Voice" : "Voice Input"}
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-stone-600 mb-1 font-semibold select-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                  {sessionMode === "meeting" ? "Meeting Speech" : "Spoken Question"}
                 </div>
               )}
-              <div className={`text-zinc-200 whitespace-pre-wrap font-medium ${isStealth ? "text-[11px] leading-snug" : "text-sm leading-relaxed"}`}>
-                {currentQuestion || (sessionMode === "meeting" ? "Waiting for meeting voice..." : "Waiting for voice input...")}
+              <div className={`text-stone-800 whitespace-pre-wrap font-medium ${isStealth ? "text-[11px] leading-snug" : "text-sm leading-relaxed"}`}>
+                {currentQuestion || (sessionMode === "meeting" ? "Listening to meeting audio..." : "Waiting for spoken question...")}
               </div>
             </div>
 
-            {/* Section 2: ANSWER */}
-            <div className={`flex-1 flex flex-col rounded-xl border border-indigo-500/15 bg-neutral-900/30 min-h-0 ${isStealth ? "p-2" : "p-4"}`}>
+            {/* Section 2: ANSWER / NOTE */}
+            <div className={`flex-1 flex flex-col rounded-2xl border border-amber-200/90 bg-amber-50/70 min-h-0 shadow-2xs ${isStealth ? "p-2" : "p-3.5"}`}>
               {!isStealth && (
-                <div className="flex-none text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5 font-bold select-none">
-                  {sessionMode === "meeting" ? "Real-time Assist" : "Suggested Response"}
+                <div className="flex items-center gap-1.5 flex-none text-[10px] uppercase tracking-wider text-amber-900 mb-1.5 font-bold select-none">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
+                  {sessionMode === "meeting" ? "Live Notes" : "Suggested Response"}
                 </div>
               )}
               <div
                 ref={answerRef}
-                className={`flex-1 overflow-y-auto custom-scrollbar whitespace-pre-wrap text-zinc-100 font-normal ${isStealth ? "text-[11px] leading-snug" : "text-sm leading-relaxed"}`}
+                className={`flex-1 overflow-y-auto custom-scrollbar whitespace-pre-wrap text-stone-900 font-normal leading-relaxed ${isStealth ? "text-[11px] leading-snug" : "text-sm"}`}
               >
-                {displayAnswer}
+                {displayAnswer || "Notes and responses will stream here in real time."}
               </div>
             </div>
-
-            {/* 
-              Future Session-History Rendering:
-              To render the entire question & answer history in the scrolling container,
-              replace the single displayAnswer above with the following map:
-              
-              {conversationHistory.map((pair, index) => (
-                <div key={index} className="mb-4 last:mb-0 border-b border-white/5 pb-3 last:border-b-0 last:pb-0">
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 font-semibold">
-                    Question {conversationHistory.length - index}
-                  </div>
-                  <div className="text-zinc-200 text-sm font-medium mb-2">
-                    {pair.question}
-                  </div>
-                  <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1 font-semibold">
-                    Answer {conversationHistory.length - index}
-                  </div>
-                  <div className="text-zinc-100 text-sm leading-relaxed">
-                    {index === 0 && isAiResponding ? aiResponse : (pair.answer || "Waiting...")}
-                  </div>
-                </div>
-              ))}
-            */}
           </div>
 
           {/* Hidden children */}
@@ -956,26 +919,26 @@ export default function FloatingPanel({
             {/* Right edge resizer */}
             <div
               onMouseDown={(e) => handleResizeMouseDown(e, "right")}
-              className="absolute top-0 right-0 bottom-4 w-1.5 cursor-ew-resize hover:bg-indigo-500/10 active:bg-indigo-500/30 z-100 transition-colors"
+              className="absolute top-0 right-0 bottom-4 w-1.5 cursor-ew-resize hover:bg-stone-300 active:bg-stone-400 z-100 transition-colors"
               title="Drag to resize width"
             />
             {/* Bottom edge resizer */}
             <div
               onMouseDown={(e) => handleResizeMouseDown(e, "bottom")}
-              className="absolute bottom-0 left-0 right-4 h-1.5 cursor-ns-resize hover:bg-indigo-500/10 active:bg-indigo-500/30 z-100 transition-colors"
+              className="absolute bottom-0 left-0 right-4 h-1.5 cursor-ns-resize hover:bg-stone-300 active:bg-stone-400 z-100 transition-colors"
               title="Drag to resize height"
             />
             {/* Bottom-right diagonal corner resizer */}
             <div
               onMouseDown={(e) => handleResizeMouseDown(e, "both")}
-              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 z-101 group/resize hover:bg-indigo-500/20 active:bg-indigo-500/40 rounded-br-2xl transition-colors"
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-end justify-end p-0.5 z-101 group/resize hover:bg-stone-200 active:bg-stone-300 rounded-br-2xl transition-colors"
               title="Drag to resize size"
             >
               <svg
                 width="8"
                 height="8"
                 viewBox="0 0 8 8"
-                className="text-zinc-500 group-hover/resize:text-indigo-400 transition-colors pointer-events-none"
+                className="text-stone-400 group-hover/resize:text-stone-700 transition-colors pointer-events-none"
               >
                 <line
                   x1="8"

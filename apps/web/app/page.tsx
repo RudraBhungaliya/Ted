@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Activity, Zap, Mic } from "lucide-react";
+import { Mic, ArrowRight, Briefcase, Coffee, Calendar, Clock, Monitor } from "lucide-react";
 import Overlay from "./overlay/Overlay";
+import Navbar from "./components/common/Navbar";
 import { useInterview } from "./features/interview/useInterview";
 import { useInterviewStore } from "./features/interview/store";
 import { useSessions } from "./features/interview/useSessions";
@@ -23,7 +24,6 @@ export default function Home() {
     const desktopControls = (window as any).desktopControls;
     if (desktopControls?.onSessionEnded) {
       const unsubscribe = desktopControls.onSessionEnded(() => {
-        // Dispatch session-stopped event so useSessions automatically refreshes
         window.dispatchEvent(new Event("session-stopped"));
       });
       return unsubscribe;
@@ -57,21 +57,6 @@ export default function Home() {
     void checkAuth();
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      const apiUrl =
-        process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
-        "http://localhost:4000";
-      await fetch(`${apiUrl}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      window.location.href = "/login";
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
   const { handleStart, handleSetMode } = useInterview();
   const isRecording = useInterviewStore((s) => s.isRecording);
   const error = useInterviewStore((s) => s.error);
@@ -79,299 +64,240 @@ export default function Home() {
 
   if (authLoading) {
     return (
-      <main className="min-h-screen bg-[#090D1A] text-zinc-100 flex items-center justify-center">
+      <main className="min-h-screen bg-[#FAF9F6] text-stone-900 flex items-center justify-center font-sans">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-zinc-400 text-sm font-medium">
-            Securing session connection...
+          <div className="w-8 h-8 border-3 border-stone-800 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-stone-500 text-sm font-medium">
+            Loading your workspace...
           </p>
         </div>
       </main>
     );
   }
 
-  return (
-    <main
-      className="
-        min-h-screen
-        bg-[#090D1A]
-        text-zinc-100
-        font-sans
-        selection:bg-indigo-500/20
-        relative
-        overflow-hidden
-      "
-    >
-      {/* Decorative premium background grid/glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1e1b4b_1.2px,transparent_1.2px)] bg-size-[24px_24px] opacity-15 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 right-10 w-125 h-125 bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+  const firstName = user?.fullName?.split(" ")[0] || "there";
 
-      {!isRecording && (
-        <>
-          {/* Premium Navbar */}
-          <nav className="relative z-20 border-b border-white/6 bg-neutral-950/20 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-linear-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
-                <Zap className="text-white w-4 h-4 fill-white/10" />
+  return (
+    <main className="min-h-screen bg-[#FAF9F6] text-stone-900 font-sans selection:bg-amber-200">
+      <Navbar user={user} />
+
+      <div className="max-w-4xl mx-auto px-6 py-10">
+        {/* Workspace Welcome & Action Bar */}
+        <div className="bg-white rounded-3xl p-8 border border-stone-200/90 shadow-xs mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-stone-100 text-stone-700 text-xs font-medium mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Audio & Screen Ready
               </div>
-              <span className="font-bold text-lg text-white">
-                Ted
-              </span>
+              <h1 className="text-3xl font-bold tracking-tight text-stone-900">
+                Good day, {firstName}
+              </h1>
+              <p className="text-stone-500 text-sm mt-1 max-w-md leading-relaxed">
+                Start a live session for interview practice or meeting notes. Ted runs cleanly alongside your workflow.
+              </p>
             </div>
-            <div className="flex items-center gap-6 font-medium">
-              <a
-                href="/"
-                className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                Assistant
-              </a>
-              <a
-                href="/history"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                History
-              </a>
-              <a
-                href="/dashboard"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Dashboard
-              </a>
-              <a
-                href="/billing"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Billing
-              </a>
+
+            <div>
               <button
-                onClick={handleLogout}
-                className="text-sm text-zinc-400 hover:text-red-400 transition-colors cursor-pointer"
+                onClick={() => {
+                  if (isDesktop && (window as any).desktopControls?.showOverlay) {
+                    (window as any).desktopControls.showOverlay();
+                  } else {
+                    setShowModeModal(true);
+                  }
+                }}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white font-medium text-sm transition-all shadow-xs hover:shadow-sm active:scale-[0.99] cursor-pointer whitespace-nowrap w-full sm:w-auto"
               >
-                Logout
+                <Mic className="w-4 h-4 text-amber-400" />
+                <span>Start New Session</span>
               </button>
             </div>
-          </nav>
+          </div>
 
-          <div
-            className="
-              max-w-2xl
-              mx-auto
-              px-6
-              pt-12
-              pb-4
-              relative
-              z-10
-            "
-          >
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-                mb-10
-                pb-8
-                border-b
-                border-white/[0.04]
-              "
-            >
+          {/* Quick Info Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8 pt-6 border-t border-stone-100">
+            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-stone-50/70 border border-stone-200/60">
+              <div className="p-2.5 rounded-xl bg-orange-100/80 text-orange-800">
+                <Briefcase className="w-4 h-4" />
+              </div>
               <div>
-                <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block mb-1">
-                  AI Co-Pilot Workspace
-                </span>
-                <h1 className="text-2xl font-extrabold text-white tracking-tight">
-                  Welcome back, {user?.fullName?.split(" ")[0] || "User"}
-                </h1>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Start a new session or review your performance metrics below.
+                <h3 className="text-xs font-semibold text-stone-800">
+                  Assistant Mode
+                </h3>
+                <p className="text-[12px] text-stone-500 mt-0.5 leading-relaxed">
+                  Real-time suggestions and natural speaking points tailored for technical interviews.
                 </p>
               </div>
-
-              <div>
-                <button
-                  onClick={() => {
-                    if (isDesktop && (window as any).desktopControls?.showOverlay) {
-                      (window as any).desktopControls.showOverlay();
-                    } else {
-                      setShowModeModal(true);
-                    }
-                  }}
-                  className="
-                    relative
-                    group
-                    flex
-                    items-center
-                    gap-2.5
-                    px-6
-                    py-3
-                    rounded-xl
-                    bg-indigo-600
-                    text-white
-                    font-semibold
-                    text-sm
-                    overflow-hidden
-                    transition-all
-                    hover:scale-[1.01]
-                    active:scale-[0.99]
-                    shadow-lg
-                    shadow-indigo-500/20
-                    hover:shadow-indigo-500/35
-                    cursor-pointer
-                  "
-                >
-                  <div
-                    className="
-                      absolute
-                      inset-0
-                      bg-linear-to-r
-                      from-indigo-500
-                      to-indigo-600
-                      opacity-0
-                      group-hover:opacity-100
-                      transition-opacity
-                    "
-                  />
-
-                  <Mic className="w-4 h-4 relative z-10" />
-                  <span className="relative z-10">Start Session</span>
-                </button>
-              </div>
             </div>
 
-            {error && (
-              <div
-                className="
-                  mb-8
-                  p-3.5
-                  rounded-xl
-                  border
-                  border-red-500/20
-                  bg-red-500/5
-                  text-red-400
-                  text-xs
-                  flex
-                  items-center
-                  gap-2.5
-                  shadow-sm
-                "
-              >
-                <div className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-                {error}
+            <div className="flex items-start gap-3.5 p-3.5 rounded-2xl bg-stone-50/70 border border-stone-200/60">
+              <div className="p-2.5 rounded-xl bg-emerald-100/80 text-emerald-800">
+                <Coffee className="w-4 h-4" />
               </div>
-            )}
-
-            <div
-              className="
-                bg-neutral-900/40
-                backdrop-blur-xl
-                border
-                border-white/[0.06]
-                rounded-2xl
-                p-6
-                shadow-2xl
-              "
-            >
-              <h2 className="text-base font-semibold text-white mb-6">
-                Recent Sessions
-              </h2>
-
-              {isLoading ? (
-                <div className="text-sm text-zinc-400 text-center py-8 italic">
-                  Loading sessions...
-                </div>
-              ) : groupedSessions.length === 0 ? (
-                <div className="text-sm text-zinc-400 text-center py-8 italic">
-                  No sessions recorded yet.
-                </div>
-              ) : (
-                groupedSessions.map((group, groupIdx) => (
-                  <div key={groupIdx} className="mb-8 last:mb-0">
-                    <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">
-                      {group.date}
-                    </h3>
-
-                    <div className="flex flex-col gap-2">
-                      {group.items.map((item, itemIdx) => (
-                        <div
-                          key={item.id || itemIdx}
-                          onClick={() => router.push(`/session/${item.id}`)}
-                          className="
-                            flex
-                            items-center
-                            justify-between
-                            p-4
-                            bg-neutral-950/45
-                            hover:bg-neutral-800/40
-                            border
-                            border-white/5
-                            rounded-xl
-                            transition-all
-                            cursor-pointer
-                          "
-                        >
-                          <div className="flex items-center gap-4">
-                            <div
-                              className={`
-                                w-2
-                                h-2
-                                rounded-full
-                                ${
-                                  item.status === "ACTIVE" ||
-                                  item.status === "running"
-                                    ? "bg-green-500 animate-pulse"
-                                    : "bg-indigo-500/30"
-                                }
-                              `}
-                            />
-                            <span className="text-[15px] font-medium text-zinc-200">
-                              {item.title}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-4">
-                            <span className="px-2 py-0.5 text-[9px] font-mono tracking-wide rounded border uppercase border-white/5 bg-neutral-900 text-zinc-400">
-                              {item.mode}
-                            </span>
-                            <span className="px-2.5 py-1 rounded-md bg-neutral-900 text-xs font-mono text-zinc-400 border border-white/5">
-                              {item.duration}
-                            </span>
-                            <span className="text-sm text-zinc-500 font-medium">
-                              {item.time}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))
-              )}
+              <div>
+                <h3 className="text-xs font-semibold text-stone-800">
+                  Meeting Mode
+                </h3>
+                <p className="text-[12px] text-stone-500 mt-0.5 leading-relaxed">
+                  Accurate full-meeting transcription with automatic key takeaways and action items.
+                </p>
+              </div>
             </div>
           </div>
-        </>
-      )}
+        </div>
 
+        {/* Error notification */}
+        {error && (
+          <div className="mb-6 p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-800 text-xs font-medium flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+            {error}
+          </div>
+        )}
+
+        {/* Desktop Helper Notice */}
+        {isDesktop && (
+          <div className="mb-8 p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 flex items-center justify-between text-xs text-blue-900">
+            <div className="flex items-center gap-2.5">
+              <Monitor className="w-4 h-4 text-blue-600" />
+              <span>Desktop overlay is connected. Click-through and screen assist are enabled.</span>
+            </div>
+            <button
+              onClick={() => (window as any).desktopControls?.showOverlay?.()}
+              className="font-semibold underline hover:text-blue-950 cursor-pointer"
+            >
+              Open Overlay
+            </button>
+          </div>
+        )}
+
+        {/* Recent Sessions */}
+        <div className="bg-white rounded-3xl p-8 border border-stone-200/90 shadow-xs">
+          <div className="flex items-center justify-between mb-6 pb-4 border-b border-stone-100">
+            <div>
+              <h2 className="text-lg font-bold text-stone-900 tracking-tight">
+                Recent Sessions
+              </h2>
+              <p className="text-xs text-stone-500 mt-0.5">
+                Review and replay past conversations.
+              </p>
+            </div>
+
+            <button
+              onClick={() => router.push("/history")}
+              className="text-xs font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1 group cursor-pointer"
+            >
+              <span>View all</span>
+              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="py-12 text-center text-stone-400 text-sm">
+              Loading sessions...
+            </div>
+          ) : groupedSessions.length === 0 ? (
+            <div className="py-12 text-center">
+              <div className="w-10 h-10 rounded-full bg-stone-100 text-stone-400 flex items-center justify-center mx-auto mb-2">
+                <Calendar className="w-5 h-5 text-stone-500" />
+              </div>
+              <p className="text-sm font-medium text-stone-700">No sessions recorded yet</p>
+              <p className="text-xs text-stone-400 mt-1">
+                Start a session to save your first transcript.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {groupedSessions.slice(0, 3).map((group, groupIdx) => (
+                <div key={groupIdx}>
+                  <span className="text-[11px] font-semibold text-stone-600 uppercase tracking-wider block mb-3">
+                    {group.date}
+                  </span>
+
+                  <div className="space-y-2.5">
+                    {group.items.map((item) => {
+                      const isMeeting = item.mode === "MEETING";
+                      const isCompleted = item.status === "COMPLETED";
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => router.push(`/session/${item.id}`)}
+                          className="flex items-center justify-between p-4 rounded-2xl border border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/70 transition-all cursor-pointer group shadow-2xs"
+                        >
+                          <div className="flex items-center gap-3.5">
+                            <div
+                              className={`w-2 h-2 rounded-full ${
+                                isCompleted ? "bg-stone-400" : "bg-emerald-500 animate-pulse"
+                              }`}
+                            />
+                            <div>
+                              <div className="font-semibold text-sm text-stone-900 group-hover:text-stone-950">
+                                {item.title || (isMeeting ? "Meeting Session" : "Assistant Session")}
+                              </div>
+                              <span className="text-xs text-stone-500 flex items-center gap-1.5 mt-0.5">
+                                <Clock className="w-3 h-3 text-stone-400" />
+                                {item.time}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                                isMeeting
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                  : "bg-orange-50 text-orange-800 border-orange-200"
+                              }`}
+                            >
+                              {item.mode}
+                            </span>
+                            <span className="text-xs font-mono text-stone-600 px-2.5 py-1 rounded-md bg-stone-100 border border-stone-200">
+                              {item.duration || "0:00"}
+                            </span>
+                            <ArrowRight className="w-4 h-4 text-stone-400 group-hover:text-stone-900 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mode Selection Modal */}
       {showModeModal && (
-        <div className="fixed inset-0 z-[9999] bg-black/70 flex items-center justify-center">
-          <div className="w-[450px] bg-[#0f172a] border border-white/10 rounded-2xl p-6 shadow-2xl">
-            <h2 className="text-2xl font-bold text-white mb-2">
-              Select Session Type
+        <div className="fixed inset-0 z-50 bg-stone-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border border-stone-200 rounded-3xl p-6 sm:p-8 shadow-xl">
+            <h2 className="text-xl font-bold text-stone-900 mb-1">
+              Choose Session Mode
             </h2>
-            <p className="text-zinc-400 text-sm mb-6">
-              Choose how Ted should assist you.
+            <p className="text-stone-500 text-xs mb-6 leading-relaxed">
+              Select the mode best suited for your conversation today.
             </p>
 
-            <div className="flex flex-col gap-3">
+            <div className="space-y-3">
               <button
                 onClick={() => {
                   handleSetMode("interview");
                   setShowModeModal(false);
                   handleStart();
                 }}
-                className="w-full p-4 rounded-xl border border-indigo-500 hover:bg-indigo-500/10 text-left cursor-pointer"
+                className="w-full p-4 rounded-2xl border border-stone-200 hover:border-orange-300 hover:bg-orange-50/40 text-left transition-all cursor-pointer group"
               >
-                <div className="font-semibold text-white">Assistant Mode</div>
-                <div className="text-sm text-zinc-400 mt-1">
-                  AI-powered real-time assistance and suggestions.
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="p-2 rounded-xl bg-orange-100 text-orange-800">
+                    <Briefcase className="w-4 h-4" />
+                  </div>
+                  <div className="font-semibold text-sm text-stone-900">
+                    Assistant Mode
+                  </div>
+                </div>
+                <div className="text-xs text-stone-500 pl-11 leading-relaxed">
+                  Real-time suggestions and structure for technical interviews and problem solving.
                 </div>
               </button>
 
@@ -381,21 +307,30 @@ export default function Home() {
                   setShowModeModal(false);
                   handleStart();
                 }}
-                className="w-full p-4 rounded-xl border border-zinc-700 hover:bg-white/5 text-left cursor-pointer"
+                className="w-full p-4 rounded-2xl border border-stone-200 hover:border-emerald-300 hover:bg-emerald-50/40 text-left transition-all cursor-pointer group"
               >
-                <div className="font-semibold text-white">Meeting Mode</div>
-                <div className="text-sm text-zinc-400 mt-1">
-                  Meeting copilot with notes and summaries.
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="p-2 rounded-xl bg-emerald-100 text-emerald-800">
+                    <Coffee className="w-4 h-4" />
+                  </div>
+                  <div className="font-semibold text-sm text-stone-900">
+                    Meeting Mode
+                  </div>
+                </div>
+                <div className="text-xs text-stone-500 pl-11 leading-relaxed">
+                  Clean verbatim transcription with automatic meeting summaries and action items.
                 </div>
               </button>
             </div>
 
-            <button
-              onClick={() => setShowModeModal(false)}
-              className="mt-4 w-full py-3 rounded-xl bg-neutral-800 text-white cursor-pointer"
-            >
-              Cancel
-            </button>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowModeModal(false)}
+                className="w-full py-3 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 font-medium text-xs transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -3,81 +3,150 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ted Overlay Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <title>Ted Companion</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* Glassmorphism overlay panel */
     #overlayPanel {
       position: fixed;
-      top: 100px;
-      right: 20px;
-      width: 350px;
-      max-height: 80vh;
-      background: rgba(30, 30, 30, 0.6);
-      backdrop-filter: blur(12px);
-      border-radius: 12px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
-      color: #fff;
+      top: 32px;
+      right: 32px;
+      width: 360px;
+      max-height: 85vh;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-radius: 20px;
+      border: 1px solid rgba(231, 229, 228, 0.9);
+      box-shadow: 0 20px 40px -15px rgba(28, 25, 23, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+      color: #292524;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
     #overlayHeader {
-      padding: 0.5rem 1rem;
-      background: rgba(0, 0, 0, 0.3);
+      padding: 0.85rem 1.15rem;
+      background: #fafaf9;
+      border-bottom: 1px solid #f5f5f4;
       cursor: move;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      font-size: 0.825rem;
+      font-weight: 600;
+      color: #1c1917;
     }
-    #overlayBody { flex: 1; overflow-y: auto; padding: 0.5rem 1rem; }
-    .tab { background: none; border: none; color: #ccc; margin-right: 0.5rem; cursor: pointer; }
-    .tab.active { color: #fff; border-bottom: 2px solid #fff; }
+    #overlayBody {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 1.15rem;
+    }
+    .tabs {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 0.85rem;
+      background: #f5f5f4;
+      padding: 3px;
+      border-radius: 10px;
+    }
+    .tab {
+      flex: 1;
+      background: none;
+      border: none;
+      color: #78716c;
+      padding: 0.4rem 0.6rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 8px;
+      transition: all 0.15s ease;
+    }
+    .tab.active {
+      background: #ffffff;
+      color: #1c1917;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    #chatLog { max-height: 200px; overflow-y: auto; }
-    button { border-radius: 6px; border: none; padding: 0.4rem 0.8rem; background: #1a1a1a; color: #fff; cursor: pointer; }
-    button:hover { background: #333; }
+    #chatLog {
+      max-height: 240px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      color: #44403c;
+      margin-bottom: 0.75rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      border-radius: 10px;
+      border: 1px solid #e7e5e4;
+      padding: 0.55rem 0.75rem;
+      font-size: 0.8rem;
+      outline: none;
+      background: #ffffff;
+      color: #1c1917;
+    }
+    input[type="text"]:focus {
+      border-color: #d97706;
+      box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+    }
+    button.action-btn {
+      border-radius: 10px;
+      border: none;
+      padding: 0.5rem 0.9rem;
+      background: #1c1917;
+      color: #ffffff;
+      font-size: 0.775rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    button.action-btn:hover {
+      background: #292524;
+    }
+    #closeOverlay {
+      background: none;
+      border: none;
+      color: #a8a29e;
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 4px 6px;
+      border-radius: 6px;
+    }
+    #closeOverlay:hover {
+      background: #f5f5f4;
+      color: #1c1917;
+    }
   </style>
 </head>
 <body>
   <div id="overlayPanel">
-    <!-- Session Mode Modal -->
-    <div id="sessionModeModal" class="modal hidden">
-      <div class="modal-content">
-        <h2>Select Session Mode</h2>
-        <p>Please choose the type of session you want to start.</p>
-        <button id="modeInterview" class="mode-btn">Interview</button>
-        <button id="modeMeeting" class="mode-btn">Meeting</button>
+    <div id="overlayHeader">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d97706;"></span>
+        <span>Ted Companion</span>
       </div>
+      <button id="closeOverlay">✕</button>
     </div>
-  <div id="overlayHeader">
-    <span>Ted Assistant</span>
-    <button id="closeOverlay">✕</button>
-    <button id="startTedBtn" class="mode-btn">Start Ted</button>
-  </div>
-  <div id="overlayBody">
-      <!-- Session List -->
-      <div id="sessionList" class="session-list hidden">
-        <h3>Previous Sessions</h3>
-        <ul id="sessionsUl"></ul>
-      </div>
+    <div id="overlayBody">
       <div class="tabs">
-      <button class="tab active" data-tab="chat">Chat</button>
-      <button class="tab" data-tab="assist">Assist</button>
-      <button class="tab" data-tab="summary">Summary</button>
+        <button class="tab active" data-tab="chat">Live Feed</button>
+        <button class="tab" data-tab="assist">Prompts</button>
+        <button class="tab" data-tab="summary">Recap</button>
+      </div>
+      <div class="tab-content active" id="chatTab">
+        <div id="chatLog" class="log">Listening for live speech...</div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <input id="chatInput" type="text" placeholder="Note or prompt..." />
+          <button id="sendChat" class="action-btn">Send</button>
+        </div>
+      </div>
+      <div class="tab-content" id="assistTab"><div id="assistOutput" class="log" style="font-size:0.8rem;color:#57534e;">STAR framework tips and coaching insights will appear here during speech.</div></div>
+      <div class="tab-content" id="summaryTab"><pre id="summaryOutput" style="font-size:0.75rem;color:#57534e;white-space:pre-wrap;font-family:inherit;">Session summaries will compile automatically once completed.</pre></div>
     </div>
-    <div class="tab-content active" id="chatTab">
-      <div id="chatLog" class="log"></div>
-      <input id="chatInput" type="text" placeholder="Type a message..." />
-      <button id="sendChat">Send</button>
-    </div>
-    <div class="tab-content" id="assistTab"><div id="assistOutput" class="log"></div></div>
-    <div class="tab-content" id="summaryTab"><pre id="summaryOutput"></pre></div>
   </div>
-</div>
-<script src="overlay.js"></script>
+  <script src="overlay.js"></script>
 </body>
 </html>

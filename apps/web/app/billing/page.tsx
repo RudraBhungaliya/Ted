@@ -3,17 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Zap,
   Check,
   AlertCircle,
   CreditCard,
-  Sparkles,
   Clock,
   Calendar,
-  ArrowLeft,
   Loader2,
-  Award,
+  ShieldCheck,
 } from "lucide-react";
+import Navbar from "../components/common/Navbar";
 import { billingApi } from "../lib/api/endpoints";
 
 type Plan = {
@@ -42,15 +40,14 @@ export default function BillingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [razorpayKeyId, setRazorpayKeyId] = useState<string | null>(null);
-  
+
   const [loading, setLoading] = useState(true);
-  const [paymentLoading, setPaymentLoading] = useState<string | null>(null); // contains planId being purchased
+  const [paymentLoading, setPaymentLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     async function loadBillingData() {
       try {
-        // 1. Check Auth & Load User
         const apiUrl =
           process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, "") ||
           "http://localhost:4000";
@@ -69,7 +66,6 @@ export default function BillingPage() {
           return;
         }
 
-        // 2. Fetch Config (Razorpay Public Key ID)
         try {
           const configRes = await billingApi.getConfig();
           if (configRes.success && configRes.data) {
@@ -79,7 +75,6 @@ export default function BillingPage() {
           console.error("Failed to load Razorpay config:", err);
         }
 
-        // 3. Fetch Subscription
         try {
           const subRes = await billingApi.getSubscription();
           if (subRes.success && subRes.data) {
@@ -89,7 +84,6 @@ export default function BillingPage() {
           console.error("Failed to load subscription:", err);
         }
 
-        // 4. Fetch Available Plans
         try {
           const plansRes = await billingApi.getPlans();
           if (plansRes.success && plansRes.data) {
@@ -99,7 +93,7 @@ export default function BillingPage() {
           console.error("Failed to load plans:", err);
         }
       } catch (err) {
-        console.error("General loading error:", err);
+        console.error("Critical billing load failure:", err);
       } finally {
         setLoading(false);
       }
@@ -108,12 +102,11 @@ export default function BillingPage() {
     void loadBillingData();
   }, [router]);
 
-  const loadRazorpayScript = () => {
+  const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
-      if ((window as any).Razorpay) {
-        resolve(true);
-        return;
-      }
+      if (typeof window === "undefined") return resolve(false);
+      if ((window as any).Razorpay) return resolve(true);
+
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.onload = () => resolve(true);
@@ -123,52 +116,32 @@ export default function BillingPage() {
   };
 
   const handleSubscribe = async (planId: string) => {
-    setPaymentLoading(planId);
     setMessage(null);
+    setPaymentLoading(planId);
 
     try {
-      // 1. Create Razorpay order on backend
-      const orderRes = await billingApi.createOrder(planId);
-      if (!orderRes.success || !orderRes.data) {
-        throw new Error("Failed to initialize billing order.");
-      }
-
-      const orderData = orderRes.data;
-
-      // 2. Load Razorpay Checkout Script
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        throw new Error("Razorpay SDK failed to load. Please check your connection.");
+        throw new Error("Razorpay SDK failed to load. Please check your internet connection.");
       }
 
-      if (!razorpayKeyId) {
-        throw new Error("Razorpay Key ID not configured. Please add it to server environment.");
+      const orderRes = await billingApi.createOrder(planId);
+      if (!orderRes.success || !orderRes.data) {
+        throw new Error(orderRes.message || "Failed to initiate payment order.");
       }
 
-      // 3. Launch Razorpay Checkout Modal
+      const { orderId, amount, currency } = orderRes.data;
+
       const options = {
-        key: razorpayKeyId,
-        amount: orderData.amount * 100, // Amount is in currency subunits (paise)
-        currency: orderData.currency,
-        name: "Ted Intelligence",
-        description: `Upgrade subscription to ${planId === "monthly-premium" ? "Monthly Premium" : "Yearly Premium"}`,
-        order_id: orderData.razorpayOrderId,
-        prefill: {
-          name: user?.fullName || "",
-          email: user?.email || "",
-        },
-        theme: {
-          color: "#4f46e5", // Indigo color corresponding to Ted theme
-        },
-        modal: {
-          ondismiss: () => {
-            setPaymentLoading(null);
-          },
-        },
-        handler: async function (response: any) {
-          setPaymentLoading(planId);
+        key: razorpayKeyId || "rzp_test_placeholder_key_id",
+        amount: amount * 100,
+        currency,
+        name: "Ted Assistant",
+        description: "Ted Premium Plan Subscription",
+        order_id: orderId,
+        handler: async (response: any) => {
           try {
-            // 4. Verify payment immediately on frontend callback
+            setPaymentLoading(planId);
             const verifyRes = await billingApi.verifyPayment({
               razorpayOrderId: response.razorpay_order_id,
               razorpayPaymentId: response.razorpay_payment_id,
@@ -178,142 +151,114 @@ export default function BillingPage() {
             if (verifyRes.success) {
               setMessage({
                 type: "success",
-                text: "Thank you! Your premium subscription is now active.",
+                text: "Thank you! Your subscription is now active.",
               });
-
-              // Refresh subscription info
-              const subUpdate = await billingApi.getSubscription();
-              if (subUpdate.success && subUpdate.data) {
-                setSubscription(subUpdate.data);
+              const subRes = await billingApi.getSubscription();
+              if (subRes.success && subRes.data) {
+                setSubscription(subRes.data);
               }
             } else {
-              throw new Error("Verification response failed.");
+              setMessage({
+                type: "error",
+                text: verifyRes.message || "Payment signature verification failed.",
+              });
             }
           } catch (err: any) {
             setMessage({
               type: "error",
-              text: err.message || "Payment verification failed. Please contact support.",
+              text: err?.message || "Verification failed after checkout.",
             });
           } finally {
             setPaymentLoading(null);
           }
         },
+        prefill: {
+          name: user?.fullName || "",
+          email: user?.email || "",
+        },
+        theme: {
+          color: "#1c1917",
+        },
       };
 
-      const paymentObject = new (window as any).Razorpay(options);
-      paymentObject.open();
+      const razorpayInstance = new (window as any).Razorpay(options);
+      razorpayInstance.on("payment.failed", (response: any) => {
+        setMessage({
+          type: "error",
+          text: response.error?.description || "Payment was declined or cancelled.",
+        });
+        setPaymentLoading(null);
+      });
+
+      razorpayInstance.open();
     } catch (err: any) {
+      console.error(err);
       setMessage({
         type: "error",
-        text: err.message || "Something went wrong initiating checkout.",
+        text: err?.message || "Failed to process payment checkout.",
       });
       setPaymentLoading(null);
     }
   };
 
-  const getDaysRemaining = (expiryDateStr: string | null) => {
-    if (!expiryDateStr) return 0;
-    const expiry = new Date(expiryDateStr);
-    const now = new Date();
-    const diffTime = expiry.getTime() - now.getTime();
-    return Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  const getDaysRemaining = (expiresAt: string | null): number => {
+    if (!expiresAt) return 0;
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
   };
+
+  const isPremiumActive =
+    subscription?.status === "ACTIVE" &&
+    (!subscription.expiresAt || new Date(subscription.expiresAt).getTime() > Date.now());
+
+  const currentPlanId = isPremiumActive ? subscription?.planId : null;
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#090D1A] text-zinc-100 flex items-center justify-center">
+      <main className="min-h-screen bg-[#FAF9F6] text-stone-900 flex items-center justify-center font-sans">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-4" />
-          <p className="text-zinc-400 text-sm font-medium">
-            Fetching billing profile & secure configurations...
+          <div className="w-8 h-8 border-3 border-stone-800 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-stone-500 text-sm font-medium">
+            Loading membership plans...
           </p>
         </div>
       </main>
     );
   }
 
-  const isPremiumActive = subscription && subscription.status === "ACTIVE" && getDaysRemaining(subscription.expiresAt) > 0;
-  const currentPlanId = isPremiumActive ? subscription?.planId : null;
-
   return (
-    <main className="min-h-screen bg-[#090D1A] text-zinc-100 font-sans relative overflow-hidden pb-20">
-      {/* Glow Effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(#1e1b4b_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-15 pointer-events-none" />
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 right-10 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
+    <main className="min-h-screen bg-[#FAF9F6] text-stone-900 font-sans selection:bg-amber-200 pb-20">
+      <Navbar user={user} />
 
-      {/* Navigation */}
-      <nav className="relative z-20 border-b border-white/[0.06] bg-neutral-950/20 backdrop-blur-md px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center">
-            <Zap className="text-white w-4 h-4 fill-white/10" />
-          </div>
-          <span className="font-bold text-lg text-white">Ted Intelligence</span>
+      <div className="max-w-4xl mx-auto px-6 pt-10">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight text-stone-900">
+            Membership & Plans
+          </h1>
+          <p className="text-stone-500 text-sm mt-1">
+            Choose the membership tier that fits your meeting load and interview prep schedule.
+          </p>
         </div>
-        <div className="flex items-center gap-6 font-medium">
-          <a
-            href="/"
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
-          >
-            Interview
-          </a>
-          <a
-            href="/history"
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
-          >
-            History
-          </a>
-          <a
-            href="/dashboard"
-            className="text-sm text-zinc-400 hover:text-white transition-colors"
-          >
-            Dashboard
-          </a>
-          <a
-            href="/billing"
-            className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
-          >
-            Billing
-          </a>
-        </div>
-      </nav>
 
-      <div className="max-w-4xl mx-auto px-6 pt-12 relative z-10">
-        {/* Back Button */}
-        <button
-          onClick={() => router.push("/")}
-          className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white font-semibold transition-colors mb-6 cursor-pointer"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Back to Workspace
-        </button>
-
-        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
-          Billing & Subscriptions
-        </h1>
-        <p className="text-sm text-zinc-400 mb-8">
-          Manage your account plans, billing details, and premium workspace access.
-        </p>
-
-        {/* Message Alert */}
+        {/* Status Notification Message */}
         {message && (
           <div
-            className={`p-4 rounded-xl border mb-8 flex items-start gap-3 shadow-md ${
+            className={`p-4 rounded-2xl border mb-6 flex items-start gap-3 shadow-2xs ${
               message.type === "success"
-                ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400"
-                : "bg-red-500/5 border-red-500/20 text-red-400"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : "bg-rose-50 border-rose-200 text-rose-800"
             }`}
           >
             {message.type === "success" ? (
-              <Check className="w-5 h-5 shrink-0 mt-0.5" />
+              <Check className="w-5 h-5 shrink-0 mt-0.5 text-emerald-600" />
             ) : (
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600" />
             )}
             <div>
-              <p className="text-sm font-semibold">
-                {message.type === "success" ? "Success!" : "Payment Status"}
+              <p className="text-sm font-bold">
+                {message.type === "success" ? "Success" : "Payment Notice"}
               </p>
-              <p className="text-xs mt-1 text-zinc-300 font-medium">
+              <p className="text-xs mt-0.5 font-medium leading-relaxed">
                 {message.text}
               </p>
             </div>
@@ -321,97 +266,98 @@ export default function BillingPage() {
         )}
 
         {/* Current Plan Card */}
-        <div className="p-6 rounded-2xl bg-neutral-900/40 border border-white/[0.06] backdrop-blur-xl mb-10 shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-stone-200/90 shadow-xs mb-10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 mb-6 border-b border-stone-100 gap-4">
             <div>
-              <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest block mb-1">
-                Account Status
+              <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider block mb-1">
+                Your Current Status
               </span>
-              <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                {isPremiumActive ? (
-                  <>
-                    Premium Member
-                    <Sparkles className="w-5 h-5 text-indigo-400 fill-indigo-400/20" />
-                  </>
-                ) : (
-                  "Free Member"
-                )}
+              <h2 className="text-2xl font-bold text-stone-900">
+                {isPremiumActive ? subscription?.plan.name : "Free Starter Plan"}
               </h2>
-              <p className="text-xs text-zinc-400 mt-1">
+              <p className="text-xs text-stone-500 mt-1">
                 {isPremiumActive
-                  ? `You are currently on the ${subscription?.plan.name}. Thank you for supporting Ted!`
-                  : "You are currently using the limited Free tier."}
+                  ? "All premium capabilities, screen capture, and unlimited recording are active."
+                  : "You are currently on the free starter plan with basic session access."}
               </p>
             </div>
-            
-            <div className="shrink-0 flex flex-col items-start md:items-end gap-2">
+
+            <div>
               <span
-                className={`text-xs font-bold px-3 py-1 rounded-full border uppercase ${
+                className={`text-xs font-semibold px-3 py-1 rounded-full border ${
                   isPremiumActive
-                    ? "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
-                    : "bg-neutral-800 border-zinc-700 text-zinc-400"
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    : "bg-stone-100 text-stone-700 border-stone-200"
                 }`}
               >
-                {isPremiumActive ? "Premium Active" : "Free Plan"}
+                {isPremiumActive ? "Active Member" : "Free Plan"}
               </span>
             </div>
           </div>
 
           {isPremiumActive && subscription && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/[0.04]">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-600 shadow-2xs">
                   <CreditCard className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
+                  <span className="text-[10px] text-stone-400 font-semibold uppercase block">
                     Plan Cost
-                  </div>
-                  <div className="text-sm font-semibold text-zinc-200 mt-0.5">
+                  </span>
+                  <span className="text-sm font-bold text-stone-900">
                     ₹{subscription.plan.price} /{" "}
                     {subscription.plan.durationDays === 365 ? "year" : "month"}
-                  </div>
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-600 shadow-2xs">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                    Renewal Date
-                  </div>
-                  <div className="text-sm font-semibold text-zinc-200 mt-0.5">
+                  <span className="text-[10px] text-stone-400 font-semibold uppercase block">
+                    Valid Through
+                  </span>
+                  <span className="text-sm font-bold text-stone-900">
                     {subscription.expiresAt
-                      ? new Date(subscription.expiresAt).toLocaleDateString(
-                          "en-US",
-                          { month: "short", day: "numeric", year: "numeric" }
-                        )
-                      : "Never"}
-                  </div>
+                      ? new Date(subscription.expiresAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : "Lifetime"}
+                  </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-zinc-400">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/80 flex items-center gap-3.5">
+                <div className="w-9 h-9 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-600 shadow-2xs">
                   <Clock className="w-4 h-4" />
                 </div>
                 <div>
-                  <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                    Time Remaining
-                  </div>
-                  <div className="text-sm font-semibold text-zinc-200 mt-0.5">
+                  <span className="text-[10px] text-stone-400 font-semibold uppercase block">
+                    Remaining
+                  </span>
+                  <span className="text-sm font-bold text-stone-900">
                     {getDaysRemaining(subscription.expiresAt)} days
-                  </div>
+                  </span>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Pricing Options Section */}
-        <h3 className="text-lg font-bold text-white mb-6">Available Plans</h3>
+        {/* Pricing Cards */}
+        <div className="mb-6">
+          <h2 className="text-lg font-bold text-stone-900 tracking-tight">
+            Available Plans
+          </h2>
+          <p className="text-xs text-stone-500 mt-0.5">
+            Straightforward pricing. No surprise fees.
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {plans.map((plan) => {
@@ -421,66 +367,66 @@ export default function BillingPage() {
             return (
               <div
                 key={plan.id}
-                className={`p-6 rounded-2xl border backdrop-blur-xl transition-all relative flex flex-col justify-between ${
-                  isCurrent
-                    ? "bg-indigo-500/5 border-indigo-500/40 shadow-lg shadow-indigo-500/5"
-                    : "bg-neutral-900/30 border-white/[0.06] hover:border-white/10 hover:bg-neutral-900/40"
+                className={`bg-white rounded-3xl p-6 sm:p-8 border transition-all flex flex-col justify-between relative ${
+                  isYearly
+                    ? "border-stone-900 shadow-md ring-1 ring-stone-900/5"
+                    : "border-stone-200/90 shadow-xs hover:border-stone-300"
                 }`}
               >
                 {isYearly && (
-                  <span className="absolute -top-3 right-6 px-3 py-0.5 rounded-full text-[9px] font-bold bg-indigo-600 text-white uppercase tracking-wider shadow-md">
-                    Best Value (Save ~65%)
+                  <span className="absolute -top-3 right-6 px-3 py-1 rounded-full text-[10px] font-bold bg-stone-900 text-white uppercase tracking-wider shadow-xs">
+                    Recommended • Save ~65%
                   </span>
                 )}
 
                 <div>
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h4 className="text-lg font-bold text-zinc-100">
+                      <h3 className="text-xl font-bold text-stone-900">
                         {plan.name}
-                      </h4>
-                      <p className="text-xs text-zinc-400 mt-1">
-                        Full access for {plan.durationDays} days
+                      </h3>
+                      <p className="text-xs text-stone-500 mt-0.5">
+                        {plan.durationDays} days of uninterrupted access
                       </p>
                     </div>
+
                     {isCurrent && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded-md border border-indigo-500/20">
-                        <Award className="w-3.5 h-3.5" />
-                        Current Active
+                      <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                        Current Plan
                       </span>
                     )}
                   </div>
 
-                  <div className="flex items-baseline gap-1.5 mb-6">
-                    <span className="text-3xl font-extrabold text-white">
+                  <div className="flex items-baseline gap-1.5 mb-6 pb-6 border-b border-stone-100">
+                    <span className="text-3xl font-extrabold text-stone-900">
                       ₹{plan.price}
                     </span>
-                    <span className="text-xs text-zinc-400 font-semibold">
+                    <span className="text-xs text-stone-500 font-medium">
                       / {isYearly ? "year" : "month"}
                     </span>
                   </div>
 
-                  {/* Plan Features */}
+                  {/* Checklist */}
                   <ul className="space-y-3 mb-8">
-                    <li className="flex items-start gap-2.5 text-xs text-zinc-300">
-                      <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                      <span>Unlimited real-time audio transcripts</span>
+                    <li className="flex items-start gap-2.5 text-xs text-stone-700">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Unlimited real-time speech transcription</span>
                     </li>
-                    <li className="flex items-start gap-2.5 text-xs text-zinc-300">
-                      <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                      <span>Advanced Gemini and Deepgram LLM pipeline</span>
+                    <li className="flex items-start gap-2.5 text-xs text-stone-700">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Live speaking suggestions for technical interviews</span>
                     </li>
-                    <li className="flex items-start gap-2.5 text-xs text-zinc-300">
-                      <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                      <span>Detailed session analytics & feedback scorecard</span>
+                    <li className="flex items-start gap-2.5 text-xs text-stone-700">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Always-on-top desktop overlay with screen assist</span>
                     </li>
-                    <li className="flex items-start gap-2.5 text-xs text-zinc-300">
-                      <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                      <span>Custom meeting mode & note capturing</span>
+                    <li className="flex items-start gap-2.5 text-xs text-stone-700">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Automatic meeting summaries & action item extraction</span>
                     </li>
-                    <li className="flex items-start gap-2.5 text-xs text-zinc-300">
-                      <Check className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
-                      <span>Real-time overlay and screen analysis</span>
+                    <li className="flex items-start gap-2.5 text-xs text-stone-700">
+                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <span>Full searchable session archive & speech metrics</span>
                     </li>
                   </ul>
                 </div>
@@ -488,31 +434,39 @@ export default function BillingPage() {
                 <button
                   disabled={isCurrent || paymentLoading !== null}
                   onClick={() => handleSubscribe(plan.id)}
-                  className={`w-full py-3 rounded-xl font-bold text-sm transition-all relative overflow-hidden flex items-center justify-center gap-2 cursor-pointer ${
+                  className={`w-full py-3.5 rounded-2xl font-semibold text-xs tracking-wide transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs ${
                     isCurrent
-                      ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-default"
-                      : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/10 active:scale-[0.99]"
+                      ? "bg-stone-100 text-stone-500 border border-stone-200 cursor-default"
+                      : isYearly
+                      ? "bg-stone-900 hover:bg-stone-800 text-white active:scale-[0.99]"
+                      : "bg-white hover:bg-stone-50 text-stone-900 border border-stone-300 active:scale-[0.99]"
                   }`}
                 >
                   {paymentLoading === plan.id ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      Processing Checkout...
+                      <Loader2 className="w-4 h-4 animate-spin text-stone-700" />
+                      <span>Opening Secure Checkout...</span>
                     </>
                   ) : isCurrent ? (
                     <>
-                      <Check className="w-4 h-4" />
-                      Plan Active
+                      <Check className="w-4 h-4 text-emerald-600" />
+                      <span>Current Active Plan</span>
                     </>
                   ) : isPremiumActive ? (
-                    "Switch to Plan"
+                    <span>Switch to this Plan</span>
                   ) : (
-                    "Subscribe Plan"
+                    <span>Upgrade to {plan.name}</span>
                   )}
                 </button>
               </div>
             );
           })}
+        </div>
+
+        {/* Security guarantee */}
+        <div className="mt-12 text-center flex items-center justify-center gap-2 text-xs text-stone-400">
+          <ShieldCheck className="w-4 h-4 text-stone-500" />
+          <span>Encrypted payment processing via Razorpay. Cancel anytime without penalty.</span>
         </div>
       </div>
     </main>
